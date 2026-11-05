@@ -129,7 +129,7 @@
   beginProcessing({ type: 'process-ai' });
  }
 
- function pickBackgroundColor() {
+ function pickBackgroundColor(event: MouseEvent) {
   const image = manualImage;
   if (!image || !image.naturalWidth || !image.naturalHeight) return;
 
@@ -269,11 +269,11 @@
       </div>
       <input class="range" type="range" min="0" max="100" bind:value={split} aria-label="Before and after comparison"/>
      {:else if removalMode === 'manual'}
-      <button type="button" class="sampler" onclick={pickBackgroundColor} aria-label="Sample the background colour from the image">
+      <button type="button" class="sampler" onclick={(event) => pickBackgroundColor(event)} aria-label="Sample the background colour from the image">
        <img bind:this={manualImage} src={original} alt="" aria-hidden="true"/>
       </button>
      {:else}
-      <img src={original} alt="Selected image"/>
+      <img src={original} alt="Selected photo"/>
      {/if}
      {#if busy}
       <div class="busy" aria-live="polite">
