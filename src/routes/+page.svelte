@@ -15,6 +15,7 @@
  let tolerance = $state(48);
  let manualColor = $state<SampleColor | null>(null);
  let aiDownloadProgress = $state<number | null>(null);
+ let aiDownloadFile = $state('');
  let aiStage = $state<'loading' | 'processing'>('loading');
  let picker = $state<HTMLInputElement | undefined>(undefined);
  let manualImage = $state<HTMLImageElement | undefined>(undefined);
@@ -22,6 +23,8 @@
 
  function selectImage(nextFile?: File) {
   if (!nextFile) return;
+  // Clear the picker so the same file can be selected again after Start over.
+  if (picker) picker.value = '';
 
   if (!nextFile.type.startsWith('image/')) {
    error = 'Please choose a supported image file.';
@@ -49,11 +52,15 @@
  function setRemovalMode(nextMode: RemovalMode) {
   if (removalMode === nextMode) return;
 
+  // Stop any active job so an old result cannot appear under the newly selected method.
+  worker?.terminate();
+  worker = undefined;
   removalMode = nextMode;
   manualColor = null;
   error = '';
   busy = false;
   aiDownloadProgress = null;
+  aiDownloadFile = '';
 
   if (cutout) URL.revokeObjectURL(cutout);
   cutout = '';
@@ -67,6 +74,7 @@
    if (event.data?.type === 'download-progress') {
     const value = Number(event.data.progress);
     aiDownloadProgress = Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+    aiDownloadFile = String(event.data.file || 'model asset');
    } else if (event.data?.type === 'status') {
     if (event.data.stage === 'processing') {
      aiStage = 'processing';
@@ -79,10 +87,12 @@
     cutout = URL.createObjectURL(event.data.blob);
     busy = false;
     aiDownloadProgress = null;
+    aiDownloadFile = '';
    } else if (event.data?.type === 'error') {
     error = event.data.message || 'Background removal failed. Please try another image.';
     busy = false;
     aiDownloadProgress = null;
+    aiDownloadFile = '';
    }
   };
 
@@ -103,6 +113,7 @@
   error = '';
   busy = true;
   aiDownloadProgress = null;
+  aiDownloadFile = '';
   aiStage = 'loading';
 
   try {
@@ -193,6 +204,8 @@
   error = '';
   busy = false;
   aiDownloadProgress = null;
+  aiDownloadFile = '';
+  if (picker) picker.value = '';
  }
 
  onMount(() => {
@@ -265,10 +278,10 @@
        <div class="spinner"></div>
        {#if removalMode === 'ai' && aiDownloadProgress !== null}
         <b>Downloading AI model · {aiDownloadProgress}%</b>
-        <div class="progress-track" role="progressbar" aria-label="AI model download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={aiDownloadProgress}>
+        <div class="progress-track" role="progressbar" aria-label="Current AI model file download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={aiDownloadProgress}>
          <span style="width: {aiDownloadProgress}%"></span>
         </div>
-        <small>The model is downloaded from its public host and cached by your browser where supported. Your photo is not uploaded.</small>
+        <small>Downloading {aiDownloadFile || 'model asset'} from its public host. Your photo is not uploaded.</small>
        {:else if removalMode === 'ai'}
         <b>{aiStage === 'processing' ? 'Removing background…' : 'Loading AI model…'}</b>
         <small>{aiStage === 'processing' ? 'The AI is processing your image on this device.' : 'Checking the model cache and preparing the AI engine.'}</small>
