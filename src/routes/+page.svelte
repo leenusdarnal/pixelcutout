@@ -1,4 +1,5 @@
 <script lang="ts">
+ import { onMount } from 'svelte';
  let file = $state<File | null>(null);
  let original = $state('');
  let cutout = $state('');
@@ -6,7 +7,7 @@
  let error = $state('');
  let mode = $state('checker');
  let split = $state(50);
- let picker: HTMLInputElement;
+ let picker = $state<HTMLInputElement | undefined>(undefined);
  let worker: Worker | undefined;
 
  function selectImage(nextFile?: File) {
@@ -101,7 +102,6 @@
    if (cutout) URL.revokeObjectURL(cutout);
   };
  });
- import { onMount } from 'svelte';
 </script>
 
 <svelte:window onpaste={paste}/>
