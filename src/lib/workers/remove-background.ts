@@ -3,7 +3,6 @@ import { env, pipeline } from '@huggingface/transformers';
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-type BackgroundRemover = Awaited<ReturnType<typeof pipeline>>;
 let remover: any = null;
 let removerDevice: 'webgpu' | 'wasm' | null = null;
 
