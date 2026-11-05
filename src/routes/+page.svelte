@@ -119,7 +119,7 @@
   </section>
 
   {#if !original}
-   <section class="drop" role="region" aria-label="Image upload drop zone" ondragover={(event) => event.preventDefault()} ondrop={drop}>
+   <section class="drop" aria-label="Image upload drop zone" ondragover={(event) => event.preventDefault()} ondrop={drop}>
     <div class="upload">↑</div>
     <h2>Drop an image here</h2>
     <p>or choose a file from your device</p>
@@ -138,11 +138,11 @@
      {#if cutout}
       <img class="cut" src={cutout} alt="Cutout with transparent background"/>
       <div class="before" style="clip-path:inset(0 {100 - Number(split)}% 0 0)">
-       <img src={original} alt="Original photo"/>
+       <img src={original} alt="Original"/>
       </div>
       <input class="range" type="range" min="0" max="100" bind:value={split} aria-label="Before and after comparison"/>
      {:else}
-      <img src={original} alt="Selected photo"/>
+      <img src={original} alt="Selected"/>
      {/if}
      {#if busy}
       <div class="busy" aria-live="polite">
