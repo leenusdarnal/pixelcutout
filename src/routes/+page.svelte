@@ -1,5 +1,6 @@
 <script lang="ts">
  import { onMount } from 'svelte';
+ import StudioEditor from '$lib/components/StudioEditor.svelte';
 
  type RemovalMode = 'ai' | 'manual';
  type SampleColor = { r: number; g: number; b: number };
@@ -127,6 +128,15 @@
 
  function removeWithAi() {
   beginProcessing({ type: 'process-ai' });
+ }
+
+ function cancelProcessing() {
+  worker?.terminate();
+  worker = undefined;
+  busy = false;
+  aiDownloadProgress = null;
+  aiDownloadFile = '';
+  error = 'Processing cancelled.';
  }
 
  function pickBackgroundColor(event: MouseEvent) {
@@ -291,9 +301,14 @@
         <b>Removing selected colour…</b>
         <small>Processing the image on this device without an AI model.</small>
        {/if}
+       <button class="link" onclick={cancelProcessing}>Cancel</button>
       </div>
      {/if}
     </div>
+
+    {#if cutout}
+     <StudioEditor src={cutout} onError={(message) => error = message}/>
+    {/if}
 
     {#if !cutout && !busy}
      <div class="tool-panel">
