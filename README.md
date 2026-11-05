@@ -6,7 +6,7 @@ PixelCutout is a privacy-first, browser-based background remover. Image pixels a
 
 PixelCutout gives users two choices:
 
-- **AI automatic:** Uses [Xenova/modnet](https://huggingface.co/Xenova/modnet) to identify and remove the subject background. The model is downloaded only when the user starts AI removal, and the interface displays download progress as a percentage. Transformers.js selects browser-optimised weights by default where available. The model is cached by the browser where supported.
+- **AI automatic:** Uses [Xenova/modnet](https://huggingface.co/Xenova/modnet) to identify and remove the subject background. The AI runtime is imported only when the user starts AI removal. The browser uses the compact `q4f16` WebGPU model where supported and falls back to the `uint8` WASM model. The interface displays the current model-file download progress as a percentage. The model is cached by the browser where supported.
 - **Without AI:** Lets the user click a background colour in the image, adjust the colour tolerance, and remove matching colours. It does not download an AI model. This works best for plain or fairly uniform backgrounds; matching colours inside the subject may also become transparent.
 
 ## Stack
@@ -33,4 +33,4 @@ npm run build
 
 ## Privacy
 
-Image files are decoded and processed on-device. AI mode downloads model and runtime assets from public model hosts, but does not send user image pixels to those hosts or to an application server. No-AI mode uses local colour matching and does not download model files. First-time AI model use requires an internet connection.
+Image files are decoded and processed on-device. AI mode downloads model and runtime assets from public model hosts, but does not send user image pixels to those hosts or to an application server. No-AI mode uses local colour matching and does not load the AI runtime or download model files. First-time AI model use requires an internet connection.
