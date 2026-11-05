@@ -129,9 +129,9 @@
   beginProcessing({ type: 'process-ai' });
  }
 
- function pickBackgroundColor(event: MouseEvent) {
-  const image = event.currentTarget as HTMLImageElement;
-  if (!image.naturalWidth || !image.naturalHeight) return;
+ function pickBackgroundColor() {
+  const image = manualImage;
+  if (!image || !image.naturalWidth || !image.naturalHeight) return;
 
   const rect = image.getBoundingClientRect();
   const x = Math.max(0, Math.min(image.naturalWidth - 1, Math.floor((event.clientX - rect.left) * image.naturalWidth / rect.width)));
@@ -269,7 +269,9 @@
       </div>
       <input class="range" type="range" min="0" max="100" bind:value={split} aria-label="Before and after comparison"/>
      {:else if removalMode === 'manual'}
-      <img bind:this={manualImage} class="manual-target" src={original} alt="Selected image. Click the background colour you want to remove." onclick={pickBackgroundColor}/>
+      <button type="button" class="sampler" onclick={pickBackgroundColor} aria-label="Sample the background colour from the image">
+       <img bind:this={manualImage} src={original} alt="" aria-hidden="true"/>
+      </button>
      {:else}
       <img src={original} alt="Selected image"/>
      {/if}
@@ -382,7 +384,8 @@ main{max-width:820px;margin:auto;padding:70px 22px 48px}
 .preview.light{background:#f5f5f5}
 .preview.dark{background:#202126}
 .preview>img,.before img{max-width:100%;max-height:100%;object-fit:contain}
-.preview>img.manual-target{cursor:crosshair}
+.sampler{display:grid;place-items:center;max-width:100%;max-height:100%;padding:0;border:0;background:transparent;cursor:crosshair}
+.sampler img{display:block;max-width:100%;max-height:100%;object-fit:contain}
 .before{position:absolute;inset:0;display:grid;place-items:center;border-right:2px solid #b7f477}
 .before img{width:100%;height:100%;object-fit:contain}
 .range{position:absolute;bottom:8px;width:90%}
