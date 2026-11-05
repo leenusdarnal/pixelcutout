@@ -1,63 +1,56 @@
-import { env, pipeline } from '@huggingface/transformers';
+type TransformersModule = typeof import('@huggingface/transformers');
 
-env.allowLocalModels = false;
-env.useBrowserCache = true;
-
+let transformersModule: TransformersModule | null = null;
 let remover: any = null;
 let removerDevice: 'webgpu' | 'wasm' | null = null;
 
-function createProgressCallback() {
-  const files = new Map<string, { loaded: number; total: number }>();
+async function getTransformers() {
+  // Keep the AI runtime out of the no-AI path. It is imported only when AI removal is requested.
+  if (!transformersModule) {
+    transformersModule = await import('@huggingface/transformers');
+    transformersModule.env.allowLocalModels = false;
+    transformersModule.env.useBrowserCache = true;
+  }
 
+  return transformersModule;
+}
+
+function createProgressCallback() {
   return (info: any) => {
     if (info.status === 'download') {
-      self.postMessage({ type: 'download-progress', progress: 0 });
+      self.postMessage({
+        type: 'download-progress',
+        progress: 0,
+        file: info.file || 'model asset'
+      });
       return;
     }
 
+    if (info.status === 'progress') {
+      self.postMessage({
+        type: 'download-progress',
+        progress: Math.max(0, Math.min(100, Math.round(Number(info.progress) || 0))),
+        file: info.file || 'model asset'
+      });
+      return;
+    }
+
+    // Kept for compatibility with Transformers.js releases that report aggregate progress.
     if (info.status === 'progress_total' && Number.isFinite(info.progress)) {
       self.postMessage({
         type: 'download-progress',
-        progress: Math.max(0, Math.min(100, Math.round(info.progress)))
+        progress: Math.max(0, Math.min(100, Math.round(info.progress))),
+        file: 'model files'
       });
       return;
     }
 
-    if (info.status === 'progress' && info.file) {
-      files.set(info.file, {
-        loaded: Number(info.loaded) || 0,
-        total: Number(info.total) || 0
-      });
-
-      const entries = [...files.values()].filter((item) => item.total > 0);
-      const totalBytes = entries.reduce((sum, item) => sum + item.total, 0);
-      const loadedBytes = entries.reduce((sum, item) => sum + Math.min(item.loaded, item.total), 0);
-      const percentage = totalBytes > 0
-        ? (loadedBytes / totalBytes) * 100
-        : Number(info.progress) || 0;
-
+    if (info.status === 'done') {
       self.postMessage({
         type: 'download-progress',
-        progress: Math.max(0, Math.min(100, Math.round(percentage)))
+        progress: 100,
+        file: info.file || 'model asset'
       });
-      return;
-    }
-
-    if (info.status === 'done' && info.file) {
-      const previous = files.get(info.file);
-      if (previous?.total) {
-        files.set(info.file, { loaded: previous.total, total: previous.total });
-        const entries = [...files.values()].filter((item) => item.total > 0);
-        const totalBytes = entries.reduce((sum, item) => sum + item.total, 0);
-        const loadedBytes = entries.reduce((sum, item) => sum + Math.min(item.loaded, item.total), 0);
-
-        if (totalBytes > 0) {
-          self.postMessage({
-            type: 'download-progress',
-            progress: Math.max(0, Math.min(100, Math.round((loadedBytes / totalBytes) * 100)))
-          });
-        }
-      }
       return;
     }
 
@@ -68,9 +61,12 @@ function createProgressCallback() {
 }
 
 async function loadRemover(device: 'webgpu' | 'wasm') {
+  const { pipeline } = await getTransformers();
+
   remover = await pipeline('background-removal', 'Xenova/modnet', {
     device,
-    // Leave dtype unset so Transformers.js can select its browser-optimised weights.
+    // MODNet publishes a compact q4f16 WebGPU model and a uint8 WASM model.
+    dtype: device === 'webgpu' ? 'q4f16' : 'uint8',
     progress_callback: createProgressCallback()
   });
   removerDevice = device;
