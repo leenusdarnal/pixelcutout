@@ -1,3 +1,5 @@
+import { removeColorPixels } from '../image/remove-color.js';
+
 type TransformersModule = typeof import('@huggingface/transformers');
 
 let transformersModule: TransformersModule | null = null;
@@ -141,28 +143,7 @@ async function removeSampledColor(
 
     context.drawImage(bitmap, 0, 0);
     const image = context.getImageData(0, 0, bitmap.width, bitmap.height);
-    const pixels = image.data;
-    const limit = Math.max(1, Math.min(180, Number(tolerance) || 48));
-    const featherStart = limit * 0.72;
-    const featherWidth = Math.max(1, limit - featherStart);
-
-    // Remove similar colours throughout the image. A soft transition helps reduce harsh edges.
-    for (let offset = 0; offset < pixels.length; offset += 4) {
-      const red = pixels[offset] - color.r;
-      const green = pixels[offset + 1] - color.g;
-      const blue = pixels[offset + 2] - color.b;
-      const distance = Math.sqrt(red * red + green * green + blue * blue);
-
-      let alpha = 255;
-      if (distance <= featherStart) {
-        alpha = 0;
-      } else if (distance < limit) {
-        alpha = Math.round(((distance - featherStart) / featherWidth) * 255);
-      }
-
-      pixels[offset + 3] = Math.round((pixels[offset + 3] * alpha) / 255);
-    }
-
+    removeColorPixels(image.data, color, tolerance);
     context.putImageData(image, 0, 0);
     return await canvas.convertToBlob({ type: 'image/png' });
   } finally {
