@@ -27,8 +27,8 @@
   // Clear the picker so the same file can be selected again after Start over.
   if (picker) picker.value = '';
 
-  if (!nextFile.type.startsWith('image/')) {
-   error = 'Please choose a supported image file.';
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(nextFile.type)) {
+   error = 'Please choose a PNG, JPG, or WebP image.';
    return;
   }
   if (nextFile.size > 20 * 1024 * 1024) {
@@ -146,9 +146,10 @@
   const rect = image.getBoundingClientRect();
   const x = Math.max(0, Math.min(image.naturalWidth - 1, Math.floor((event.clientX - rect.left) * image.naturalWidth / rect.width)));
   const y = Math.max(0, Math.min(image.naturalHeight - 1, Math.floor((event.clientY - rect.top) * image.naturalHeight / rect.height)));
+  // Sample only the selected source pixel instead of allocating a full-resolution canvas.
   const canvas = document.createElement('canvas');
-  canvas.width = image.naturalWidth;
-  canvas.height = image.naturalHeight;
+  canvas.width = 1;
+  canvas.height = 1;
 
   const context = canvas.getContext('2d', { willReadFrequently: true });
   if (!context) {
@@ -156,8 +157,8 @@
    return;
   }
 
-  context.drawImage(image, 0, 0);
-  const pixel = context.getImageData(x, y, 1, 1).data;
+  context.drawImage(image, x, y, 1, 1, 0, 0, 1, 1);
+  const pixel = context.getImageData(0, 0, 1, 1).data;
   manualColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
   error = '';
  }

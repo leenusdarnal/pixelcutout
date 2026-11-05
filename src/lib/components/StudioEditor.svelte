@@ -136,12 +136,29 @@
   context.restore();
  }
 
- function restoreAt(point: { x: number; y: number }) {
+ function restoreAt(from: { x: number; y: number }, to: { x: number; y: number }) {
   const context = canvasContext();
   if (!context || !baseCanvas) return;
+  const radius = brushSize / 2;
   context.save();
   context.beginPath();
-  context.arc(point.x, point.y, brushSize / 2, 0, Math.PI * 2);
+
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (Math.abs(dx) + Math.abs(dy) < 0.01) {
+   context.arc(to.x, to.y, radius, 0, Math.PI * 2);
+  } else {
+   // Build a capsule-shaped clip path so fast pointer movement restores a continuous stroke.
+   const angle = Math.atan2(dy, dx);
+   const side = angle + Math.PI / 2;
+   context.moveTo(from.x + Math.cos(side) * radius, from.y + Math.sin(side) * radius);
+   context.lineTo(to.x + Math.cos(side) * radius, to.y + Math.sin(side) * radius);
+   context.arc(to.x, to.y, radius, side, side + Math.PI);
+   context.lineTo(from.x - Math.cos(side) * radius, from.y - Math.sin(side) * radius);
+   context.arc(from.x, from.y, radius, side + Math.PI, side + Math.PI * 2);
+  }
+
+  context.closePath();
   context.clip();
   context.globalCompositeOperation = 'source-over';
   context.drawImage(baseCanvas, 0, 0);
@@ -150,7 +167,7 @@
 
  function applyBrush(from: { x: number; y: number }, to: { x: number; y: number }) {
   if (tool === 'erase') eraseAt(from, to);
-  else restoreAt(to);
+  else restoreAt(from, to);
  }
 
  function startStroke(event: PointerEvent) {
@@ -220,6 +237,35 @@
   applyHistory(entry, 'after');
   future = future.slice(0, -1);
   history = [...history, entry];
+ }
+
+ function resetEdits() {
+  if (!src) return;
+  if (backgroundImageUrl) {
+   URL.revokeObjectURL(backgroundImageUrl);
+   backgroundImageUrl = '';
+  }
+  background = 'transparent';
+  shadow = 0;
+  tool = 'erase';
+  brushSize = 44;
+  void loadImage(src);
+ }
+
+ function handleKeydown(event: KeyboardEvent) {
+  const target = event.target as HTMLElement | null;
+  if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+  if (!(event.ctrlKey || event.metaKey)) return;
+
+  const key = event.key.toLowerCase();
+  if (key === 'z') {
+   event.preventDefault();
+   if (event.shiftKey) redo();
+   else undo();
+  } else if (key === 'y') {
+   event.preventDefault();
+   redo();
+  }
  }
 
  function croppedCopy(source: HTMLCanvasElement, x: number, y: number, width: number, height: number) {
@@ -392,6 +438,8 @@
  });
 </script>
 
+<svelte:window onkeydown={handleKeydown}/>
+
 <section class="studio" aria-label="Cutout editor">
  <div class="studio-heading">
   <div>
@@ -424,6 +472,7 @@
    <span class="row-spacer"></span>
    <button onclick={undo} disabled={!history.length}>Undo</button>
    <button onclick={redo} disabled={!future.length}>Redo</button>
+   <button onclick={resetEdits} disabled={!ready}>Reset edits</button>
   </div>
   <label class="slider-label" for="brush-size"><span>Brush size</span><b>{brushSize}px</b></label>
   <input id="brush-size" class="slider" type="range" min="8" max="180" step="2" bind:value={brushSize}/>
