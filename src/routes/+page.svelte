@@ -273,7 +273,7 @@
        <img bind:this={manualImage} src={original} alt="" aria-hidden="true"/>
       </button>
      {:else}
-      <img src={original} alt="Selected photo"/>
+      <img src={original} alt="Selected"/>
      {/if}
      {#if busy}
       <div class="busy" aria-live="polite">
