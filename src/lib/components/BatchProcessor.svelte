@@ -96,7 +96,7 @@
 
 <section class="batch" aria-label="Batch background removal">
  <div class="heading"><div><small>WORK ON MULTIPLE PHOTOS</small><h2>Batch background removal</h2><p>Add up to 20 images, process them sequentially on your device, and download all cutouts in one ZIP file.</p></div><span class="mark">▦</span></div>
- <div class="drop" ondragover={(event)=>event.preventDefault()} ondrop={drop}>
+ <div class="drop" role="group" ondragover={(event)=>event.preventDefault()} ondrop={drop}>
   <strong>Drop multiple images here</strong><span>PNG · JPG · WEBP · 20 MB each · 100 MB total</span>
   <button onclick={()=>picker?.click()} disabled={running}>Add images</button>
   <input bind:this={picker} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onchange={(event)=>addFiles(event.currentTarget.files??[])}/>

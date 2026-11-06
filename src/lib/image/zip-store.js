@@ -1,9 +1,15 @@
 const CRC_TABLE=new Uint32Array(256);
 for(let n=0;n<256;n++){let v=n;for(let bit=0;bit<8;bit++)v=v&1?0xedb88320^(v>>>1):v>>>1;CRC_TABLE[n]=v>>>0;}
+/** @param {Uint8Array} bytes */
 export function crc32(bytes){let crc=0xffffffff;for(let i=0;i<bytes.length;i++)crc=CRC_TABLE[(crc^bytes[i])&255]^(crc>>>8);return(crc^0xffffffff)>>>0;}
+/** @param {DataView} v @param {number} o @param {number} n */
 const u16=(v,o,n)=>v.setUint16(o,n,true);
+/** @param {DataView} v @param {number} o @param {number} n */
 const u32=(v,o,n)=>v.setUint32(o,n>>>0,true);
-/** Create an uncompressed ZIP; image formats are already compressed. */
+/**
+ * Create an uncompressed ZIP; image formats are already compressed.
+ * @param {{name:string; data:Uint8Array}[]} files
+ */
 export function createZip(files){
  const encoder=new TextEncoder(),locals=[],centrals=[];let offset=0;
  const now=new Date(),time=(now.getHours()<<11)|(now.getMinutes()<<5)|Math.floor(now.getSeconds()/2),date=((Math.max(1980,now.getFullYear())-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
