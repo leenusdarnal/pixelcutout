@@ -1,6 +1,7 @@
 <script lang="ts">
  import { onMount } from 'svelte';
  import StudioEditor from '$lib/components/StudioEditor.svelte';
+ import BatchProcessor from '$lib/components/BatchProcessor.svelte';
 
  type RemovalMode = 'ai' | 'manual';
  type SampleColor = { r: number; g: number; b: number };
@@ -356,6 +357,8 @@
   {/if}
 
   {#if error}<p class="error" role="alert">{error}</p>{/if}
+  <BatchProcessor />
+
   <aside>
    <b>Your images never leave your device</b>
    <p>Both methods process image pixels locally in your browser. AI mode downloads model files when needed, but your photo is never sent to the model host or an application server. Without AI, PixelCutout removes colours you select and does not download model files.</p>
