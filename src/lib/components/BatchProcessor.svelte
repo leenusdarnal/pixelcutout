@@ -57,7 +57,7 @@
   if(running||!items.some((i)=>i.status==='queued'))return;
   error='';running=true;progress=0;cursor=0;
   items=items.map((i)=>i.status==='error'?{...i,status:'queued',message:undefined}:i);
-  worker=new Worker(new URL('../lib/workers/remove-background.ts',import.meta.url),{type:'module'});
+  worker=new Worker(new URL('../workers/remove-background.ts',import.meta.url),{type:'module'});
   worker.onmessage=(event:MessageEvent)=>{
    const data=event.data;
    if(data?.type==='download-progress'){modelProgress=Number.isFinite(Number(data.progress))?Math.max(0,Math.min(100,Math.round(Number(data.progress)))):0;return;}
