@@ -14,8 +14,8 @@
  let manualColor=$state<RGBColor|null>(null);
  let tolerance=$state(48);
  let sampleUrl=$state('');
- let sampleImage:HTMLImageElement|undefined;
- let sampleFile:File|undefined;
+ let sampleImage=$state<HTMLImageElement|undefined>(undefined);
+ let sampleFile=$state<File|undefined>(undefined);
  let picker:HTMLInputElement|undefined;
  let worker:Worker|undefined;
  let nextId=1;
@@ -141,7 +141,7 @@
    </select>
    {#if sampleUrl}
     <p class="instruction">Click a background area in this image to sample its colour. That colour and tolerance will be applied to every image in the batch.</p>
-    <button type="button" class="sample-image" onclick={sampleBackground} aria-label="Click to sample the background colour"><img bind:this={sampleImage} src={sampleUrl} alt="Sample image for colour selection"/></button>
+    <button type="button" class="sample-image" onclick={sampleBackground} aria-label="Click to sample the background colour"><img bind:this={sampleImage} src={sampleUrl} alt="Background colour sampling source"/></button>
    {/if}
    {#if manualColor}
     <div class="sample-row"><span class="swatch" style="background:rgb({manualColor.r},{manualColor.g},{manualColor.b})"></span><span>Selected RGB: {manualColor.r}, {manualColor.g}, {manualColor.b}</span><button class="quiet" onclick={()=>manualColor=null}>Choose again</button></div>
