@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "PixelCutout — Private Background Remover",
+  "short_name": "PixelCutout",
+  "description": "Remove image backgrounds privately on your device with AI or colour-based tools.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101114",
+  "theme_color": "#101114",
+  "icons": [
+    {
+      "src": "/pixelcutout-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
