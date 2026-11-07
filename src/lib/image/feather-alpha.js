@@ -3,6 +3,10 @@
  * expanding transparent pixels. Returns the tile indexes touched so callers
  * can store compact, tile-based undo history.
  */
+/** @param {{ data: Uint8ClampedArray, width: number, height: number }} imageData
+ * @param {number} [passes]
+ * @param {number} [tileSize]
+ */
 export function featherAlpha(imageData, passes = 1, tileSize = 128) {
   if (!imageData || !imageData.data || !Number.isInteger(imageData.width) || !Number.isInteger(imageData.height)) {
     throw new TypeError('A valid ImageData object is required.');
