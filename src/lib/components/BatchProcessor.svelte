@@ -3,7 +3,7 @@
  import { createZip } from '$lib/image/zip-store.js';
  type RGBColor = { r:number; g:number; b:number };
  type Method = 'ai'|'manual';
- type Item = { id:number; file:File; status:'queued'|'processing'|'done'|'error'; result?:Blob; message?:string; sampleColor?:RGBColor };
+ type Item = { id:number; file:File; status:'queued'|'processing'|'done'|'error'; result?:Blob; message?:string; sampleColor?:RGBColor; sampleTolerance?:number };
  let items=$state<Item[]>([]);
  let running=$state(false);
  let progress=$state(0);
@@ -63,7 +63,7 @@
   if(!context){error='This browser could not sample the image colour.';return;}
   context.drawImage(image,x,y,1,1,0,0,1,1);
   const pixel=context.getImageData(0,0,1,1).data;
-  items=items.map((item)=>item.id===selectedSampleId?{...item,sampleColor:{r:pixel[0],g:pixel[1],b:pixel[2]}}:item);error='';
+  items=items.map((item)=>item.id===selectedSampleId?{...item,sampleColor:{r:pixel[0],g:pixel[1],b:pixel[2]},sampleTolerance:item.sampleTolerance??tolerance}:item);error='';
  }
  function drop(event:DragEvent){event.preventDefault();if(event.dataTransfer?.files)addFiles(event.dataTransfer.files);}
  function removeItem(id:number){if(!running)items=items.filter((i)=>i.id!==id);}
@@ -84,7 +84,7 @@
   items[index]={...item,status:'processing'};items=[...items];
   const message=method==='ai'
    ?{type:'process-ai',file:item.file}
-   :{type:'process-manual',file:item.file,color:item.sampleColor,tolerance};
+   :{type:'process-manual',file:item.file,color:item.sampleColor,tolerance:item.sampleTolerance??tolerance};
   worker?.postMessage(message);
  }
  function startBatch(){
@@ -152,7 +152,8 @@
     <p class="instruction">Click the background in the preview. The colour is saved only for <strong>{sampleFile?.name}</strong>; repeat for each image with a different background.</p>
     <button type="button" class="sample-image" onclick={sampleBackground} aria-label="Click to sample the selected image background"><img bind:this={sampleImage} src={sampleUrl} alt=""/></button>
     {#if items.find((item)=>item.id===selectedSampleId)?.sampleColor}
-     {@const selectedColor=items.find((item)=>item.id===selectedSampleId)!.sampleColor!}
+     {@const selectedItem=items.find((item)=>item.id===selectedSampleId)!}
+     {@const selectedColor=selectedItem.sampleColor!}
      <div class="sample-row"><span class="swatch" style="background:rgb({selectedColor.r},{selectedColor.g},{selectedColor.b})"></span><span>Saved RGB for this image: {selectedColor.r}, {selectedColor.g}, {selectedColor.b}</span><button class="quiet" onclick={()=>items=items.map((item)=>item.id===selectedSampleId?{...item,sampleColor:undefined}:item)}>Clear colour</button></div>
     {:else}
      <p class="hint">No colour sampled for this image yet.</p>
@@ -163,9 +164,9 @@
      <div class="sample-check"><span class:sampled={!!item.sampleColor}>{item.sampleColor?'✓':'○'}</span><span>{item.file.name}</span><small>{item.sampleColor?'Ready':'Needs colour'}</small></div>
     {/each}
    </div>
-   <label class="tolerance-label" for="batch-tolerance"><span>Colour tolerance</span><b>{tolerance}</b></label>
-   <input id="batch-tolerance" type="range" min="10" max="150" step="1" bind:value={tolerance}/>
-   <small class="hint">Tolerance is shared across the batch; each image uses its own sampled RGB colour. Similar colours in the subject may also become transparent.</small>
+   <label class="tolerance-label" for="batch-tolerance"><span>Tolerance for {sampleFile?.name||'new samples'}</span><b>{selectedItem.sampleTolerance??tolerance}</b></label>
+   <input id="batch-tolerance" type="range" min="10" max="150" step="1" value={selectedItem.sampleTolerance??tolerance} oninput={(event)=>{const value=Number(event.currentTarget.value);tolerance=value;items=items.map((item)=>item.id===selectedSampleId?{...item,sampleTolerance:value}:item);}}/>
+   <small class="hint">Each image has its own sampled RGB colour and tolerance. Similar colours in the subject may also become transparent.</small>
   </div>
  {/if}
  <div class="drop" role="group" ondragover={(event)=>event.preventDefault()} ondrop={drop}>
