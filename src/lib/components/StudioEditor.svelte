@@ -1,5 +1,6 @@
 <script lang="ts">
  import { onMount } from 'svelte';
+ import { featherAlpha } from '$lib/image/feather-alpha.js';
 
  type Tool = 'erase' | 'restore';
  type Background = 'transparent' | 'white' | 'soft' | 'dark' | 'gradient' | 'image' | 'custom';
@@ -15,6 +16,8 @@
  let ready = $state(false);
  let tool = $state<Tool>('erase');
  let brushSize = $state(44);
+ let edgeSoftness = $state(1);
+ let edgeBusy = $state(false);
  let background = $state<Background>('transparent');
  let backgroundColor = $state('#e8eee4');
  let backgroundImageUrl = $state('');
@@ -239,6 +242,42 @@
   history = [...history, entry];
  }
 
+ async function applyEdgeFeather() {
+  const context = canvasContext();
+  if (!canvasEl || !context || !ready || edgeBusy) return;
+  edgeBusy = true;
+  try {
+   // Yield once so the UI can show progress before reading a potentially large canvas.
+   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+   const image = context.getImageData(0, 0, canvasEl.width, canvasEl.height);
+   const result = featherAlpha(image, edgeSoftness, TILE_SIZE);
+   if (!result.changedPixels) {
+    cropMessage = 'No hard transparent edge pixels needed softening.';
+    return;
+   }
+
+   const tilesX = Math.ceil(canvasEl.width / TILE_SIZE);
+   const patches = new Map<string, TilePatch>();
+   for (const tileIndex of result.changedTiles) {
+    const x = (tileIndex % tilesX) * TILE_SIZE;
+    const y = Math.floor(tileIndex / tilesX) * TILE_SIZE;
+    const w = Math.min(TILE_SIZE, canvasEl.width - x);
+    const h = Math.min(TILE_SIZE, canvasEl.height - y);
+    patches.set(`${x}:${y}`, { x, y, w, h, before: context.getImageData(x, y, w, h) });
+   }
+
+   context.putImageData(image, 0, 0);
+   for (const patch of patches.values()) patch.after = context.getImageData(patch.x, patch.y, patch.w, patch.h);
+   history = [...history, { patches: [...patches.values()] }].slice(-24);
+   future = [];
+   cropMessage = `Softened ${result.changedPixels.toLocaleString()} edge pixels. Use Undo to reverse.`;
+  } catch (error) {
+   onError(error instanceof Error ? error.message : 'Could not soften the cutout edges.');
+  } finally {
+   edgeBusy = false;
+  }
+ }
+
  function resetEdits() {
   if (!src) return;
   if (backgroundImageUrl) {
@@ -249,6 +288,7 @@
   shadow = 0;
   tool = 'erase';
   brushSize = 44;
+  edgeSoftness = 1;
   void loadImage(src);
  }
 
@@ -467,16 +507,20 @@
  <div class="tool-block">
   <div class="tool-title"><b>Refine edges</b><span>Brush edits are reversible</span></div>
   <div class="tool-row">
-   <button class:chosen={tool === 'erase'} onclick={() => tool = 'erase'} disabled={!ready}>Erase</button>
-   <button class:chosen={tool === 'restore'} onclick={() => tool = 'restore'} disabled={!ready}>Restore</button>
+   <button class:chosen={tool === 'erase'} onclick={() => tool = 'erase'} disabled={!ready || edgeBusy}>Erase</button>
+   <button class:chosen={tool === 'restore'} onclick={() => tool = 'restore'} disabled={!ready || edgeBusy}>Restore</button>
    <span class="row-spacer"></span>
-   <button onclick={undo} disabled={!history.length}>Undo</button>
-   <button onclick={redo} disabled={!future.length}>Redo</button>
-   <button onclick={resetEdits} disabled={!ready}>Reset edits</button>
+   <button onclick={undo} disabled={!history.length || edgeBusy}>Undo</button>
+   <button onclick={redo} disabled={!future.length || edgeBusy}>Redo</button>
+   <button onclick={resetEdits} disabled={!ready || edgeBusy}>Reset edits</button>
   </div>
   <label class="slider-label" for="brush-size"><span>Brush size</span><b>{brushSize}px</b></label>
-  <input id="brush-size" class="slider" type="range" min="8" max="180" step="2" bind:value={brushSize}/>
-  <small class="hint">Erase removes pixels from the cutout. Restore paints back pixels from the original AI result. Undo history stores only the image tiles touched by each stroke.</small>
+  <input id="brush-size" class="slider" type="range" min="8" max="180" step="2" bind:value={brushSize} disabled={!ready || edgeBusy}/>
+  <label class="slider-label" for="edge-softness"><span>Edge feather strength</span><b>{edgeSoftness} / 4</b></label>
+  <input id="edge-softness" class="slider" type="range" min="1" max="4" step="1" bind:value={edgeSoftness} disabled={!ready || edgeBusy}/>
+  <div class="tool-row edge-actions"><button class="apply-feather" onclick={applyEdgeFeather} disabled={!ready || edgeBusy}>{edgeBusy ? 'Softening edges…' : 'Apply edge feather'}</button></div>
+  <small class="hint">Feathering gently reduces opacity along the existing transparent boundary. It does not grow the subject or alter its colours. Each application can be undone.</small>
+  <small class="hint">Erase removes pixels from the cutout. Restore paints back pixels from the original AI result. Undo history stores only the image tiles touched by each edit.</small>
  </div>
 
  <div class="tool-block">
@@ -551,7 +595,7 @@
  .swatch.white{background:#fff}.swatch.soft{background:#f2eee7}.swatch.dark{background:#23252b}.swatch.gradient{background:linear-gradient(135deg,#f2d6bf,#dce7f2,#d8e8d2)}.swatch.photo{display:grid;place-items:center;color:#111;background:#ddd}
  .color-label{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#c9cbd0;margin-top:10px}
  .color-label input{border:0;background:none;width:34px;height:28px}
- .crop-row button{padding:8px 9px}
+ .edge-actions{margin-top:10px}.edge-actions .apply-feather{border-color:#b7f47766;color:#b7f477;background:#b7f47712}.crop-row button{padding:8px 9px}
  .crop-row .auto-crop{border-color:#b7f47766;color:#b7f477}
  .export-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 0 4px}
  .export-row label{font-size:11px;color:#aaa}
