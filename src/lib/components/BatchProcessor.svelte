@@ -151,8 +151,8 @@
    {#if sampleUrl}
     <p class="instruction">Click the background in the preview. The colour is saved only for <strong>{sampleFile?.name}</strong>; repeat for each image with a different background.</p>
     <button type="button" class="sample-image" onclick={sampleBackground} aria-label="Click to sample the selected image background"><img bind:this={sampleImage} src={sampleUrl} alt=""/></button>
-    {#if items.find((item)=>item.id===selectedSampleId)?.sampleColor}
-     {@const selectedItem=items.find((item)=>item.id===selectedSampleId)!}
+    {@const selectedItem=items.find((item)=>item.id===selectedSampleId)!}
+    {#if selectedItem?.sampleColor}
      {@const selectedColor=selectedItem.sampleColor!}
      <div class="sample-row"><span class="swatch" style="background:rgb({selectedColor.r},{selectedColor.g},{selectedColor.b})"></span><span>Saved RGB for this image: {selectedColor.r}, {selectedColor.g}, {selectedColor.b}</span><button class="quiet" onclick={()=>items=items.map((item)=>item.id===selectedSampleId?{...item,sampleColor:undefined}:item)}>Clear colour</button></div>
     {:else}
