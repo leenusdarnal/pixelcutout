@@ -11,15 +11,15 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@huggingface/transformers": "3.8.1",
-    "@sveltejs/adapter-static": "3.0.8",
-    "@sveltejs/kit": "2.20.8",
+    "@huggingface/transformers": "4.3.2",
+    "@sveltejs/adapter-static": "4.0.1",
+    "@sveltejs/kit": "3.1.1",
     "svelte": "5.25.7"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "5.0.3",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
     "svelte-check": "4.1.4",
-    "typescript": "5.8.2",
-    "vite": "6.2.2"
+    "typescript": "7.0.2",
+    "vite": "8.3.6"
   }
 }
