@@ -44,7 +44,7 @@ WebGPU is attempted first, with a WebAssembly fallback. Browser and device compa
 ## Development
 
 \`\`\`bash
-npm install
+npm ci
 npm run dev
 npm run test
 npm run check
