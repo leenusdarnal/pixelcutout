@@ -1,5 +1,6 @@
 <script lang="ts">
  import { onMount } from 'svelte';
+ import { readImageDimensions, validateImageDimensions } from '$lib/image/image-dimensions.js';
 
  type RemovalMode = 'ai' | 'manual';
  type SampleColor = { r: number; g: number; b: number };
@@ -20,9 +21,12 @@
  let picker = $state<HTMLInputElement | undefined>(undefined);
  let manualImage = $state<HTMLImageElement | undefined>(undefined);
  let worker: Worker | undefined;
+ let selectionRequest = 0;
 
- function selectImage(nextFile?: File) {
+ async function selectImage(nextFile?: File) {
   if (!nextFile) return;
+  const request = ++selectionRequest;
+
   // Clear the picker so the same file can be selected again after Start over.
   if (picker) picker.value = '';
 
@@ -34,6 +38,21 @@
    error = 'Please choose an image smaller than 20 MB for reliable browser processing.';
    return;
   }
+
+  // Read only the image header; do not decode a full-size bitmap to check its dimensions.
+  try {
+   const dimensions = await readImageDimensions(nextFile);
+   validateImageDimensions(dimensions);
+  } catch (validationError) {
+   if (request !== selectionRequest) return;
+   error = validationError instanceof Error
+    ? validationError.message
+    : 'This image could not be validated. Please choose a PNG, JPG, or WebP file.';
+   return;
+  }
+
+  // Ignore slow validation results when the user has already selected another file or reset.
+  if (request !== selectionRequest) return;
 
   worker?.terminate();
   worker = undefined;
@@ -47,6 +66,7 @@
   error = '';
   busy = false;
   aiDownloadProgress = null;
+  aiDownloadFile = '';
  }
 
  function setRemovalMode(nextMode: RemovalMode) {
@@ -194,6 +214,7 @@
  }
 
  function reset() {
+  selectionRequest += 1;
   worker?.terminate();
   worker = undefined;
   if (original) URL.revokeObjectURL(original);
