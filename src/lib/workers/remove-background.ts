@@ -1,4 +1,5 @@
 import { removeColorPixels } from '../image/remove-color.js';
+import { encodeRgbaPng } from '../image/png-output.js';
 import { runWithWasmFallback } from './runtime-fallback.js';
 
 type TransformersModule = typeof import('@huggingface/transformers');
@@ -108,38 +109,7 @@ async function runRemoval(file: Blob) {
 }
 
 async function toPngBlob(rawImage: any): Promise<Blob> {
-  if (!rawImage || !Number.isInteger(rawImage.width) || !Number.isInteger(rawImage.height) || !rawImage.data) {
-    throw new Error('The background-removal model returned an unsupported image.');
-  }
-
-  let canvas: OffscreenCanvas | null = null;
-  let pixels: ImageData | null = null;
-
-  try {
-    const image = rawImage.rgba();
-    canvas = new OffscreenCanvas(image.width, image.height);
-    const context = canvas.getContext('2d');
-
-    if (!context) {
-      throw new Error('This browser cannot create the PNG preview. Try a recent version of Chrome, Edge, or Firefox.');
-    }
-
-    pixels = new ImageData(
-      new Uint8ClampedArray(image.data),
-      image.width,
-      image.height
-    );
-
-    context.putImageData(pixels, 0, 0);
-    return await canvas.convertToBlob({ type: 'image/png' });
-  } finally {
-    // The returned Blob owns its encoded bytes; release the temporary RGBA and canvas buffers.
-    pixels?.data.fill(0);
-    if (canvas) {
-      canvas.width = 0;
-      canvas.height = 0;
-    }
-  }
+  return encodeRgbaPng(rawImage);
 }
 
 async function removeSampledColor(
