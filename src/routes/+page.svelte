@@ -18,6 +18,7 @@
  let manualColor = $state<SampleColor | null>(null);
  let manualResult = $state('');
  let manualPreview = $state('');
+ let manualAppliedKey = $state('');
  let displayCutout = $derived(removalMode === 'manual' ? (manualPreview || manualResult) : cutout);
  let manualCurrentKey = $derived(manualColor ? [manualColor.r, manualColor.g, manualColor.b, tolerance].join(':') : '');
  let canDownload = $derived(removalMode === 'manual' ? Boolean(manualResult && manualAppliedKey && manualAppliedKey === manualCurrentKey) : Boolean(cutout));
@@ -32,7 +33,6 @@
  let previewTimer: ReturnType<typeof setTimeout> | undefined;
  let processingMode: RemovalMode = 'ai';
  let pendingManualKey = '';
- let manualAppliedKey = $state('');
 
  async function selectImage(nextFile?: File) {
   if (!nextFile) return;
