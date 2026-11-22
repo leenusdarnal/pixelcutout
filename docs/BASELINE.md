@@ -78,3 +78,20 @@ This is a static code/documentation review, not a live network-inspection proof.
 - No representative-device inference timings, peak-memory figures, or browser transfer waterfall have been captured.
 - Model download size and cold-start time remain TBD pending the model benchmark phase.
 - Build output provides emitted asset sizes; exact first-load transfer should be confirmed with browser devtools before setting a performance target.
+
+
+## Post Phase 1 focused-flow measurement
+
+Measured from Vercel's successful production build for commit `b1916db82ec7e46b7aa3a424f0f335053dfd10c7` on 2026-11-22. The follow-up build also reported `svelte-check found 0 errors and 0 warnings`.
+
+| Asset / role | Before simplification | Focused flow | Change |
+|---|---:|---:|---:|
+| Page route JavaScript | 56.18 kB (20.09 kB gzip) | 14.44 kB (5.80 kB gzip) | -41.74 kB raw (-74.3%) |
+| Page CSS | 19.60 kB (3.79 kB gzip) | 6.31 kB (1.73 kB gzip) | -13.29 kB raw (-67.8%) |
+| Worker entry | 3.59 kB | 3.59 kB | No material change |
+| Worker runtime chunk | 902.08 kB | 902.08 kB | No material change |
+| ONNX Runtime WASM | 21,596.02 kB | 21,596.02 kB | No material change |
+
+The app route and styling are substantially smaller after removing the Studio and batch-processing paths. The inference runtime assets remain large and are the next optimisation target; the worker is created only after a removal action, and the model itself remains a separate remote download. These emitted sizes do not establish exactly what is transferred during the initial browser navigation; confirm that through a network waterfall in Phase 2/6 browser QA.
+
+The latest cleaned build is deployed at [the production preview URL](https://pixelcutout-bv4zr4tzs-leenusdarnals-projects.vercel.app/) and returned HTTP 200. GitHub Actions run [#37](https://github.com/leenusdarnal/pixelcutout/actions/runs/45001772254) had not yet produced a job result at the time this note was written; Vercel's deployment build completed successfully.
