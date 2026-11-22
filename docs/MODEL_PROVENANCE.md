@@ -45,3 +45,17 @@ This is a reproducibility limitation, not a reason to change the model automatic
 - [ ] Browser network trace shows model and metadata requests are all revision-consistent.
 - [ ] Benchmark scores and desktop/mobile performance justify the chosen model.
 - [ ] Model assets remain lazy-loaded and user image pixels remain local.
+
+
+## General-subject model candidate (research only)
+
+**Candidate:** https://huggingface.co/studioludens/birefnet-lite-512
+
+- The candidate repository includes an MIT license file. Its model card identifies the converted weights as derived from ZhengPeng7/BiRefNet_lite, which is also MIT-licensed.
+- Observed repository commit on 2026-11-22: https://huggingface.co/studioludens/birefnet-lite-512/commit/962e67969ec6acec9c19fab76acee4f5e22e990c.
+- The model card reports a fixed 512×512 input and ONNX files of 94 MB (fp16) and 183 MB (fp32). Its output is single-channel logits; the example applies sigmoid and resizes the mask back to the source dimensions.
+- The model card describes this variant as browser-ready and reports memory failures for 1024×1024 BiRefNet Lite ONNX variants. These claims have not been independently validated by PixelCutout.
+
+This is the first candidate to evaluate against MODNet for pets, products, plants, thin structures, and complex backgrounds. It is **not approved for production** yet: it is considerably larger than MODNet q4f16 (11.8 MB), uses a fixed 512×512 inference input, and has not been scored on PixelCutout's 16-case fixture set or measured on a desktop and mid-range Android device. Keep MODNet as the only production model until those tests pass.
+
+The Transformers.js release page still lists 4.3.2 as latest as of 2026-11-22. Its upstream revision-propagation issue https://github.com/huggingface/transformers.js/issues/1893 remains relevant; candidate runtime revision pinning must not be claimed until a released fix and an actual browser network trace prove all discovery, config, and weight requests use the same immutable commit.
