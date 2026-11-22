@@ -57,3 +57,8 @@ test('the primary action and semantic state labels meet 4.5:1', () => {
   assert.ok(contrast('green-700', 'green-100') >= 4.5, 'positive state text must meet 4.5:1');
   assert.ok(contrast('red-700', 'red-100') >= 4.5, 'error text must meet 4.5:1');
 });
+
+
+test('keyboard focus indicators use the high-contrast primary color', () => {
+  assert.match(page, /outline:\s*3px solid var\(--blue-600\)/);
+});
