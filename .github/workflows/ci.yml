@@ -25,62 +25,41 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Verify npm manifest and regenerate truncated lockfile
+      - name: Verify committed npm manifests
         run: |
-          test -s package.json
           node --input-type=commonjs <<'NODE'
           const fs = require('node:fs');
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          console.log('package.json parsed:', pkg.name, pkg.version);
-          NODE
-          rm -f package-lock.json
-          npm install --package-lock-only --package-lock=true --ignore-scripts --no-audit --no-fund --onnxruntime-node-install-cuda=skip
-          node --input-type=commonjs <<'NODE'
-          const fs = require('node:fs');
           const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
-          const count = Object.keys(lock.packages ?? {}).length;
-          if (lock.lockfileVersion < 1 || count < 50) {
-            throw new Error(`Unexpected lockfile: version=${lock.lockfileVersion}, package entries=${count}`);
+          const root = lock.packages?.[''];
+          if (lock.lockfileVersion !== 3 || !root) {
+            throw new Error('Expected a valid npm lockfile v3 with a root package entry.');
           }
-          console.log(`Regenerated lockfile: version=${lock.lockfileVersion}, package entries=${count}, bytes=${fs.statSync('package-lock.json').size}`);
+          if (JSON.stringify(root.dependencies) !== JSON.stringify(pkg.dependencies)) {
+            throw new Error('package-lock.json runtime dependencies do not match package.json.');
+          }
+          if (JSON.stringify(root.devDependencies) !== JSON.stringify(pkg.devDependencies)) {
+            throw new Error('package-lock.json devDependencies do not match package.json.');
+          }
+          console.log(`Validated npm lockfile: ${Object.keys(lock.packages).length} package entries, ${fs.statSync('package-lock.json').size} bytes.`);
           NODE
-      - name: Install from regenerated lockfile
-        run: npm ci --package-lock=true --no-audit --no-fund --onnxruntime-node-install-cuda=skip
+      - name: Install dependencies from committed lockfile
+        run: npm ci --no-audit --no-fund --onnxruntime-node-install-cuda=skip
       - name: Report dependency audit
         run: |
-          npm audit --json > /tmp/npm-audit-all.json || true
-          npm audit --omit=dev --json > /tmp/npm-audit-production.json || true
+          npm audit --json > /tmp/npm-audit.json || true
           node --input-type=commonjs <<'NODE'
           const fs = require('node:fs');
-
-          for (const [label, path] of [
-            ['all dependencies', '/tmp/npm-audit-all.json'],
-            ['production dependencies', '/tmp/npm-audit-production.json']
-          ]) {
-            let report;
-            try {
-              report = JSON.parse(fs.readFileSync(path, 'utf8'));
-            } catch (error) {
-              console.log(`npm audit ${label}: report unavailable (${error.message})`);
-              continue;
-            }
-
-            console.log(`npm audit ${label} counts:`, JSON.stringify(report.metadata?.vulnerabilities ?? null));
-            for (const [name, finding] of Object.entries(report.vulnerabilities ?? {})) {
-              const via = (finding.via ?? []).map((item) =>
-                typeof item === 'string' ? item : `${item.name}: ${item.title ?? item.url ?? ''}`
-              );
-              console.log(
-                `${finding.severity} ${name}@${finding.range}; direct=${finding.isDirect}; fix=${JSON.stringify(finding.fixAvailable)}; via=${via.join(' | ')}`
-              );
-            }
+          const report = JSON.parse(fs.readFileSync('/tmp/npm-audit.json', 'utf8'));
+          console.log('npm audit counts:', JSON.stringify(report.metadata?.vulnerabilities ?? null));
+          for (const [name, finding] of Object.entries(report.vulnerabilities ?? {})) {
+            const via = (finding.via ?? []).map((item) =>
+              typeof item === 'string' ? item : `${item.name}: ${item.title ?? item.url ?? ''}`
+            );
+            console.log(
+              `${finding.severity} ${name}@${finding.range}; direct=${finding.isDirect}; fix=${JSON.stringify(finding.fixAvailable)}; via=${via.join(' | ')}`
+            );
           }
           NODE
       - name: Build, type-check and run unit tests
         run: npm run build
-      - name: Export generated lockfile for repository repair
-        run: |
-          echo LOCKFILE_BASE64_BEGIN
-          base64 -w0 package-lock.json | fold -w 2000
-          echo
-          echo LOCKFILE_BASE64_END
