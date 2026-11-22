@@ -2,8 +2,8 @@
 
 > Living implementation tracker. Update this file as work is completed. Keep changes small, measurable, and aligned with the privacy-first, browser-only product.
 
-**Tracker version:** 1.2
-**Status:** Implementation in progress
+**Tracker version:** 1.3
+**Status:** Core application implementation complete; benchmark and live QA gates remain
 **Last updated:** 2026-11-22
 **Product:** PixelCutout — one-image-at-a-time background removal
 **Reference document:** `pixelcutout_project_tracker.docx` (project tracker document)
@@ -21,16 +21,16 @@
 ## 2. Lightweight guardrails
 
 - [x] Keep the SvelteKit + Svelte + TypeScript stack lightweight. The SvelteKit 3 and adapter-static 4 upgrade is merged to main with no feature/model scope.
-- [ ] Prefer existing utilities and browser APIs over new dependencies.
+- [x] Prefer existing utilities and browser APIs over new dependencies; no additional runtime dependency was introduced.
 - [ ] Add a dependency only when a measured requirement cannot be met with the current stack; record its size and rationale.
-- [ ] Load the AI runtime and model only after the user clicks **Remove Background**; never preload them on initial page load.
-- [ ] Use one selected model/runtime path at a time; avoid shipping multiple production models without benchmark evidence.
-- [ ] Keep inference in a Web Worker where supported; preserve the existing WebGPU/WASM fallback strategy.
-- [ ] Keep the model asset separate from the initial app bundle and cache it safely where appropriate.
-- [ ] Enforce both file-size and decoded-pixel/dimension limits before allocating large buffers; show a useful error.
-- [ ] Process one image only; no batch queues, ZIP export, accounts, history, cloud storage, or backend image APIs in the initial release.
-- [ ] Avoid adding a design system, state library, analytics, or server infrastructure for this scope.
-- [ ] Revoke object URLs, release image/canvas/worker resources, and clear references when replacing or leaving an image.
+- [x] Load the AI runtime and model only after the user clicks **Remove Background**; never preload them on initial page load.
+- [x] Use one selected model/runtime path at a time; avoid shipping multiple production models without benchmark evidence.
+- [x] Keep inference in a Web Worker where supported; preserve the existing WebGPU/WASM fallback strategy.
+- [x] Keep the model asset separate from the initial app bundle and cache it safely where appropriate.
+- [x] Enforce both file-size and decoded-pixel/dimension limits before allocating large buffers; show a useful error.
+- [x] Process one image only; no batch queues, ZIP export, accounts, history, cloud storage, or backend image APIs in the initial release.
+- [x] Avoid adding a design system, state library, analytics, or server infrastructure for this scope.
+- [x] Revoke object URLs, release image/canvas/worker resources, and clear references when replacing or leaving an image; device memory profiling remains open in P6-02.
 - [ ] Measure initial bundle, model download, inference time, and peak memory on representative desktop and mobile devices before claiming performance.
 - [ ] Do not sacrifice output quality or privacy for an arbitrary small bundle target; document measured trade-offs.
 
@@ -53,7 +53,7 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P0-01 | Record current branch, commit, install/build/test commands, and CI status | Baseline is reproducible from a clean checkout | Done | Clean `npm ci` and `npm run build` passed on Node 22 in CI run [#24](https://github.com/leenusdarnal/pixelcutout/actions/runs/45001169884). |
+| P0-01 | Record current branch, commit, install/build/test commands, and CI status | Baseline is reproducible from a clean checkout | Done | Main HEAD after PR #27 is `d4debc2def769fa2a8f45eb69dd083db0e4bf94e`; GitHub Actions run [#132](https://github.com/leenusdarnal/pixelcutout/actions/runs/45052837301) passed on the merge commit. |
 | P0-02 | Record current bundle size and identify largest initial-load assets | Baseline numbers captured before changes | Done | Pre-simplification Vite sizes recorded in `docs/BASELINE.md`; worker chunk 902.08 kB and ONNX WASM 21,596.02 kB are emitted worker/runtime assets, not assumed initial-route downloads. |
 | P0-03 | Inventory current dependencies and identify removable/duplicate packages | No dependency removed without checking usage | Done | Direct and key transitive dependency audit recorded in `docs/DEPENDENCY_AUDIT.md`; no direct package was removed. |
 | P0-04 | Confirm privacy boundary for image pixels and model downloads | Docs/UI clearly distinguish local pixels from model asset downloads | Done | UI, worker and service-worker code reviewed; local image processing and separate model downloads are documented. Live browser network inspection remains P2-05. |
@@ -75,7 +75,7 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 | P2-01 | Validate file type, file size, decoded dimensions, and pixel count | Invalid/oversized files are rejected before heavy allocation | Done | `image-dimensions.js` reads at most 2 MB of header data; supports PNG/JPEG/WebP; rejects over 16 MP or 10,000 px per side before preview/worker allocation. Ten focused tests; all 17 tests passed in [CI run](https://github.com/leenusdarnal/pixelcutout/actions/runs/45002723970). |
 | P2-02 | Handle replacement while loading or processing | Previous work is cancelled/ignored safely; new image becomes current | Done | Selection request tokens discard stale header-validation results; replacing/resetting terminates the previous worker, and worker identity checks ignore queued events from a superseded worker. Verified by [CI run](https://github.com/leenusdarnal/pixelcutout/actions/runs/45002294789); manual device QA remains in P6-02. |
 | P2-03 | Add cancellation/reset path where feasible | User can recover from long processing without stale results | Done | Cancel terminates the active worker and clears progress; a later attempt creates a fresh worker. Worker identity checks prevent cancelled work from updating the current UI. Verified by [CI run](https://github.com/leenusdarnal/pixelcutout/actions/runs/45002294789). |
-| P2-04 | Release object URLs, canvases, buffers, and worker resources | Repeated image replacements do not accumulate retained resources | In progress | Object URLs are revoked and workers terminated on replacement/reset/unmount; manual `ImageBitmap`s are closed; temporary `ImageData` and `OffscreenCanvas` backing stores are cleared after PNG encoding. Automated checks pass in [CI run](https://github.com/leenusdarnal/pixelcutout/actions/runs/45002425468). Repeated-image memory profiling on constrained mobile devices remains pending (P6-02). |
+| P2-04 | Release object URLs, canvases, buffers, and worker resources | Repeated image replacements do not accumulate retained resources | In progress | Object URLs are revoked, workers terminated, manual ImageBitmaps closed, and temporary ImageData/canvas buffers cleared on cleanup paths; automated lifecycle tests pass. Repeated-image peak-memory profiling on a constrained mobile device remains pending (P6-02). |
 | P2-05 | Keep image data out of server requests, logs, analytics, and persistence | Network inspection confirms no image-pixel upload or storage | In progress | Static review: source `Blob` is passed to the local worker; app code does not post image bytes to an application endpoint; the service worker intercepts only same-origin GET requests and does not cache cross-origin model downloads. Live browser network inspection is still required before marking Done. |
 
 ### Phase 3 — AI quality and runtime
@@ -87,7 +87,7 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 | P3-03 | Select the smallest model that meets quality targets | Decision includes measured trade-offs; no redundant model shipped | Open | |
 | P3-04 | Keep inference off the main thread | UI remains responsive during inference on supported devices | Done | AI and manual processing run in `src/lib/workers/remove-background.ts` via a module Web Worker; the worker is created only after the user starts removal. CI build and checks passed in [run #54](https://github.com/leenusdarnal/pixelcutout/actions/runs/45003620067). Real-device responsiveness checks remain in P6-02. |
 | P3-05 | Add graceful WebGPU/WASM/runtime failure handling | Unsupported or failed runtime produces a recoverable message | Done | Added tested WebGPU-to-WASM fallback for initialization and inference failures; failed WebGPU sessions are disposed before switching, WASM is reused for later images, and WASM errors propagate to the UI's recoverable error state. Five focused fallback tests; full CI passed with 22 tests, 0 type errors/warnings, and a successful production build in [run #54](https://github.com/leenusdarnal/pixelcutout/actions/runs/45003620067). |
-| P3-06 | Document model source, license, version, and update procedure | Model provenance and update path are recorded; runtime revision is safely reproducible | In progress | Added `docs/MODEL_PROVENANCE.md` with model ID, observed Hub commit SHA, Apache-2.0 metadata, file variants, runtime version, and update steps. Runtime pinning is deferred: Transformers.js 4.3.2 does not consistently propagate `revision` to pipeline file discovery/progress metadata (upstream issue [#1893](https://github.com/huggingface/transformers.js/issues/1893)); related fix PR [#1942](https://github.com/huggingface/transformers.js/pull/1942) is closed unmerged. Do not claim the runtime is pinned until a released fix is verified. |
+| P3-06 | Document model source, license, version, and update procedure | Model provenance and update path are recorded; runtime revision is safely reproducible | In progress | `docs/MODEL_PROVENANCE.md` records the model ID, observed Hub commit, Apache-2.0 metadata, file variants, and update steps. As checked 2026-11-22, the upstream release page still lists Transformers.js 4.3.2 as latest; revision-propagation issue [#1893](https://github.com/huggingface/transformers.js/issues/1893) is not fixed in a published release, and fix PR [#1942](https://github.com/huggingface/transformers.js/pull/1942) was closed as superseded. Do not pin until a released fix and browser network proof are available. |
 | P3-07 | Validate benchmark manifest paths, metadata, and image hashes in CI | CI finds the manifest and checks local fixture metadata/hashes without committing images | Done | Fixed validator path resolution so it reads `benchmarks/manifest.json` and `benchmarks/images/`; added `npm run benchmark:validate`, regression tests for normal and `--require-complete` operation, and CI execution. GitHub Actions [run #131](https://github.com/leenusdarnal/pixelcutout/actions/runs/45052492932) passed: validator, production dependency audit, unit tests, Svelte checks, and Vite production build. No dependency or image binary added. |
 
 ### Phase 4 — Result and export
@@ -113,12 +113,12 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P6-01 | Run type checks, unit tests, and production build | All required CI checks pass | Done | Latest validated production build on `main`: 34 tests passed, 0 failed; `svelte-check` 0 errors/0 warnings; Vite client/server build and static adapter completed. Deployment [READY](https://vercel.com/leenusdarnals-projects/pixelcutout/EjAwJHYEiaW7rp59P7g7Fn9yXgR9) for commit `4e5198f19a41476de35f80ae0e83adbc63223b6e`. Vercel/npm environment warnings remain informational and did not fail the build. |
-| P6-02 | Test desktop and mobile, including constrained memory | No crash or unusable state on supported test devices | Open | |
-| P6-03 | Verify privacy claims with browser network inspection | No image pixels leave the browser | Open | |
-| P6-04 | Verify PNG dimensions, alpha, and edge quality | Output meets benchmark acceptance criteria | Open | |
+| P6-01 | Run type checks, unit tests, and production build | All required CI checks pass | Done | Latest main-branch verification is GitHub Actions [run #132](https://github.com/leenusdarnal/pixelcutout/actions/runs/45052837301) for merge commit `d4debc2`; benchmark validation, production dependency audit, unit tests, Svelte checks, and static production build all passed. |
+| P6-02 | Test desktop and mobile, including constrained memory | No crash or unusable state on supported test devices | Open | Requires real desktop and mid-range Android device workflows, including repeated-image memory profiling. Desktop/mobile viewport page captures returned HTTP 200, but they do not substitute for interactive device testing. |
+| P6-03 | Verify privacy claims with browser network inspection | No image pixels leave the browser | Open | Static review shows local Blob-to-worker processing and a same-origin-only service worker; live DevTools traces are still needed to verify no image-pixel requests and confirm AI model/runtime requests begin only after the user's explicit action. |
+| P6-04 | Verify PNG dimensions, alpha, and edge quality | Output meets benchmark acceptance criteria | Open | PNG encoder unit tests cover RGBA dimensions, alpha preservation, malformed frames, and cleanup. Visual edge/halo scoring on representative licensed fixtures remains pending; the benchmark manifest is intentionally empty until local fixtures are supplied. |
 | P6-05 | Update README with workflow, limits, privacy, and model details | Documentation matches shipped behaviour | Done | README now documents the advanced manual sample/tolerance flow, 512 px preview limit, full-resolution apply step, independent AI/manual results, and the download guard. Existing file limits, privacy boundaries, model provenance, runtime fallback, and lightweight scope are retained. |
-| P6-06 | Deploy preview and verify; record Vercel quota issues separately | Preview is verified; quota failures are not mislabelled as app failures | Open | |
+| P6-06 | Deploy preview and verify; record Vercel quota issues separately | Preview is verified; quota failures are not mislabelled as app failures | Blocked | Production deployment for PR #26 commit `c294b97` is READY and the landing page returns HTTP 200. PR #27 merged docs-only commit `d4debc2`; its Vercel check is blocked by the Vercel build-rate limit. Static desktop/mobile viewport captures both returned HTTP 200, but full upload-to-export workflows remain unverified. |
 
 ## 5. Model benchmark scorecard
 
