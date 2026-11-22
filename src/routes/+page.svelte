@@ -232,6 +232,7 @@
 
  onMount(() => {
   return () => {
+   selectionRequest += 1;
    worker?.terminate();
    if (original) URL.revokeObjectURL(original);
    if (cutout) URL.revokeObjectURL(cutout);
