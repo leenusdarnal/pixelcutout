@@ -3,7 +3,15 @@
 Captured: 2026-11-22  
 Repository: [leenusdarnal/pixelcutout](https://github.com/leenusdarnal/pixelcutout)  
 Baseline branch: `main`  
-Build-verified commit: `b6f9cdb8bca5280d1b617b7473b015e941f52f31`
+Build-verified commit: `b6f9cdb8bca5280d1b617b7473b015e941f52f31` (historical pre-simplification baseline)
+
+## Current main status after SvelteKit 3 migration (2026-11-22)
+
+- Current main commit after PR #27: `d4debc2def769fa2a8f45eb69dd083db0e4bf94e`.
+- Current stack: SvelteKit 3.4.0, `@sveltejs/adapter-static` 4.0.1, Svelte 5.57.3, Vite 8.3.8, TypeScript 6.0.3, and Node.js >=22.17.0.
+- GitHub Actions [run #132](https://github.com/leenusdarnal/pixelcutout/actions/runs/45052837301) passed on the current main commit, including the production audit, benchmark validator, tests, Svelte checks, and production build.
+- The current production deployment still points to the PR #26 merge commit `c294b979bb88524be6ba9cd4be51d49a7d56a15e` and is READY; its landing page returned HTTP 200. PR #27 changed documentation only. The Vercel check for that newer commit is blocked by the account build-rate limit.
+- The original measurements below are retained as historical baseline data. Current dependency and post-migration build measurements are recorded in [`DEPENDENCY_AUDIT.md`](DEPENDENCY_AUDIT.md).
 
 ## Toolchain and reproducible commands
 

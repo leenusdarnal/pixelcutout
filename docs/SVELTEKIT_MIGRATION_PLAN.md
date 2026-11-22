@@ -1,6 +1,6 @@
 # SvelteKit Major Migration Plan
 
-**Status:** Migration implemented on chore/sveltekit-3-migration; awaiting pull-request CI and preview verification before merge
+**Status:** Merged to `main` in PR #26 at `c294b979bb88524be6ba9cd4be51d49a7d56a15e`; post-merge browser privacy and device verification remain open
 **Decision date:** 2026-11-22
 **Pre-migration baseline:** SvelteKit 2.70.4, `@sveltejs/adapter-static` 3.0.11, Svelte 5.57.3, Vite 6.4.6
 **Implemented target:** SvelteKit 3.4.0, adapter-static 4.0.1, Svelte 5.57.3, vite-plugin-svelte 7.3.1, Vite 8.3.8, TypeScript 6.0.3, svelte-check 4.7.8; Node.js >=22.17.0 (validated on 22.23.5).
@@ -71,8 +71,11 @@ Preserve these product constraints:
 - Kept adapter-static and the Vercel build output directory; no server runtime or application backend was introduced.
 - Clean npm ci, all 34 tests, Svelte checks, Vite production builds (client/server/service worker), and both production/full npm audits pass. The full audit currently reports zero vulnerabilities.
 - The generated migration task document was reviewed and removed. Its development-only CORS note is not applicable: the app does not serve static assets cross-origin during local development.
+- PR #26 was merged to `main` at `c294b979bb88524be6ba9cd4be51d49a7d56a15e`; the SvelteKit 3 migration is complete.
+- PR #27 made documentation and benchmark-validator changes only and was merged at `d4debc2def769fa2a8f45eb69dd083db0e4bf94e`. GitHub Actions run [#132](https://github.com/leenusdarnal/pixelcutout/actions/runs/45052837301) passed on the resulting `main` commit.
+- The production deployment for the PR #26 merge remains READY and serves the static app with HTTP 200. The Vercel check for the newer documentation-only commit is blocked by the Vercel build-rate limit; no application-code change is awaiting deployment.
 
-## Remaining verification before merge
+## Post-merge verification
 
 ### CI and preview deployment evidence (2026-11-22)
 
@@ -80,8 +83,15 @@ Preserve these product constraints:
 - [x] Vercel preview deployment is READY for commit `82a8e124634d510e781631c4134061131c433ac9`: [preview URL](https://pixelcutout-322089iwd-leenusdarnals-projects.vercel.app) · [deployment details](https://vercel.com/leenusdarnals-projects/pixelcutout/AMDGCe2zo1b1QcQRR5TVjFTXBpUx).
 - Automated HTTP inspection was redirected to Vercel login because this preview is protected. Live browser/network and end-to-end device checks therefore remain unverified; deployment protection was not changed.
 
-## Remaining verification before merge
+## Post-merge verification
 
 - [x] PR CI and Vercel preview deployment status pass.
 - [ ] Complete browser network inspection with authorized preview access: confirm no model/runtime request before the explicit AI action and no image pixels leave the browser.
 - [ ] Complete desktop and mobile workflow checks for AI removal, manual colour fallback, cancellation/replacement, before/after comparison, and transparent PNG export.
+
+
+## Current post-merge verification snapshot (2026-11-22)
+
+- The production landing page returned HTTP 200. Desktop and mobile viewport captures also returned HTTP 200.
+- These checks establish static page availability only. The protected preview's interactive upload, AI inference, manual workflow, and download path have not been tested end to end.
+- The browser-control connection was unavailable in this session. Do not mark initial-load network privacy, image-pixel non-upload, or constrained-device memory checks complete without an authorized browser trace and real-device run.
