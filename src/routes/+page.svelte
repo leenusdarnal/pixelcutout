@@ -689,7 +689,7 @@
  --ink-900: hsl(218 32% 17%);
  --ink-700: hsl(216 24% 31%);
  --ink-600: hsl(215 18% 42%);
- --ink-500: hsl(215 16% 49%);
+ --ink-500: hsl(215 18% 44%);
  --surface: hsl(216 33% 98%);
  --surface-2: hsl(216 27% 95%);
  --surface-3: hsl(216 22% 91%);
@@ -727,7 +727,7 @@
 :global(button), :global(input) { font: inherit; }
 :global(button) { -webkit-tap-highlight-color: transparent; }
 :global(button:focus-visible), :global(input:focus-visible), :global(a:focus-visible) {
- outline: 3px solid hsl(218 95% 55% / 45%);
+ outline: 3px solid var(--blue-600);
  outline-offset: 3px;
 }
 .app-shell { min-height: 100vh; background: linear-gradient(180deg, hsl(214 34% 99%) 0%, var(--surface) 440px); }
@@ -970,7 +970,7 @@
 }
 .original-label { left: 13px; }
 .result-label { right: 13px; }
-.preview-stage:has(.comparison-range:focus-visible) .comparison-handle { outline: 3px solid hsl(218 95% 55% / 55%); outline-offset: 4px; }
+.preview-stage:has(.comparison-range:focus-visible) .comparison-handle { outline: 3px solid var(--blue-600); outline-offset: 4px; }
 .processing-overlay {
  position: absolute;
  inset: 0;
