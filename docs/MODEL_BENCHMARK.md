@@ -1,6 +1,6 @@
 # PixelCutout model benchmark protocol
 
-**Status:** Benchmark protocol and metadata validator are in place; no local benchmark fixtures have been registered yet.  
+**Status:** Benchmark protocol and metadata validator are in place; no licensed local fixture set or measured model scores have been registered yet.  
 **Purpose:** Select the lightest model/runtime that meets PixelCutout's broad-subject and fine-edge quality requirements.  
 **Product constraint:** All image pixels stay local. Benchmark images are test fixtures only and must never be included in the deployed site.
 
@@ -68,8 +68,8 @@ Use the same device, browser version, test image, cache state, and input dimensi
 
 | Candidate / revision | Licence | Model bytes | Runtime bytes | Cold start | Warm median | Peak memory | WebGPU | WASM | Quality score | Notes |
 |---|---|---:|---:|---:|---:|---:|---|---|---:|---|
-| Xenova/modnet (`fa2fa546052fba4c08921230a26cc69a333fca12`, observed HEAD) | Apache-2.0 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | Portrait-focused baseline; production revision is not pinned yet; see `MODEL_PROVENANCE.md` |
-| Candidate B | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | |
+| Xenova/modnet (fa2fa546052fba4c08921230a26cc69a333fca12, observed HEAD) | Apache-2.0 | 11.8 MB q4f16; 6.63 MB uint8 | Existing ONNX Runtime Web assets; see DEPENDENCY_AUDIT.md | TBD | TBD | TBD | TBD | TBD | TBD | Production baseline; model card describes portrait matting. Asset sizes are Hugging Face file sizes, not observed browser transfer totals. |
+| studioludens/birefnet-lite-512 (observed repo commit 962e67969ec6acec9c19fab76acee4f5e22e990c) | MIT (repo license; derived weights attribute ZhengPeng7/BiRefNet_lite) | 94 MB fp16; 183 MB fp32 | Transformers.js / ONNX Runtime Web; verify actual runtime/WASM transfer | TBD | TBD | TBD | Claimed WebGPU and WASM; not independently tested by PixelCutout | Claimed WebGPU and WASM; not independently tested by PixelCutout | TBD | Third-party 512×512 ONNX export. Its model card says external sigmoid is required and output must be resized to source dimensions. It claims the 1024×1024 Lite export OOMs in browsers; this remains a candidate only, not a production recommendation. |
 | Candidate C | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | |
 
 ## 6. Selection rule
@@ -80,4 +80,26 @@ Use the same device, browser version, test image, cache state, and input dimensi
 4. Keep one production model/runtime path unless measured evidence supports a second path.
 5. Record the final decision and trade-offs in this file and update `docs/PROJECT_TRACKER.md`.
 
-**Current conclusion:** no replacement model has been selected. MODNet remains the production baseline. The Hugging Face Hub reported `fa2fa546052fba4c08921230a26cc69a333fca12` as the current repository revision when checked on 2026-11-22; PixelCutout does not yet pin that revision at runtime because the installed Transformers.js 4.3.2 has an upstream revision-propagation defect. See [`MODEL_PROVENANCE.md`](MODEL_PROVENANCE.md). The 16-case set must be populated and candidates measured before a model decision.
+**Current conclusion:** no replacement model has been selected. MODNet remains the production baseline. A practical general-subject candidate has been identified for controlled evaluation: studioludens/birefnet-lite-512 (MIT, 94 MB fp16 / 183 MB fp32 as stated by its model card). The candidate's 512×512 fixed input may trade detail for browser memory, and the model card's performance and quality claims have not been independently reproduced. The existing MODNet q4f16 asset is 11.8 MB; the Lite candidate is substantially larger, so do not switch until the same image set has been scored on desktop and mid-range Android. See MODEL_PROVENANCE.md for candidate source links and the decision gate. The Hugging Face Hub reported `fa2fa546052fba4c08921230a26cc69a333fca12` as the current repository revision when checked on 2026-11-22; PixelCutout does not yet pin that revision at runtime because the installed Transformers.js 4.3.2 has an upstream revision-propagation defect. See [`MODEL_PROVENANCE.md`](MODEL_PROVENANCE.md). The 16-case set must be populated and candidates measured before a model decision.
+
+
+## 7. Candidate research notes (2026-11-22)
+
+The following candidate is a research lead, not a tested result:
+
+- Repository: https://huggingface.co/studioludens/birefnet-lite-512
+- Source architecture and weights: https://huggingface.co/ZhengPeng7/BiRefNet_lite, whose upstream repository declares MIT.
+- Candidate repository's own licence file: MIT. Observed repository commit at the time of review: https://huggingface.co/studioludens/birefnet-lite-512/commit/962e67969ec6acec9c19fab76acee4f5e22e990c.
+- Candidate model card reports 94 MB fp16 and 183 MB fp32 ONNX weights at fixed 512×512 input.
+- Model card documents an AutoModel + AutoProcessor Transformers.js flow. It says output logits need sigmoid, then resizing to the original image dimensions.
+- The author reports that the 1024×1024 ONNX variant exceeded browser memory in their tests and that the 512×512 export was made to reduce peak memory. Those are upstream claims, not PixelCutout test results.
+
+Compared with the existing MODNet q4f16 file (11.8 MB) the fp16 BiRefNet Lite candidate is about eight times larger. It may offer better coverage beyond portraits, but the 512×512 input may soften fine details when expanded to large output dimensions. Both quality and runtime cost must be measured before changing the production worker.
+
+Do not benchmark the candidate using a different input set, different resizing, or different cache state from MODNet. Record actual bytes transferred, cold-start time, warm inference median, peak memory or an available proxy, and separate WebGPU/WASM success on both desktop and mid-range Android. Do not mark the benchmark complete based on model-card claims.
+
+## 8. Model and fixture sources
+
+- Xenova/modnet: https://huggingface.co/Xenova/modnet — production baseline and portrait-matting model card.
+- studioludens/birefnet-lite-512: https://huggingface.co/studioludens/birefnet-lite-512 — browser-oriented BiRefNet Lite ONNX candidate.
+- ZhengPeng7/BiRefNet_lite: https://huggingface.co/ZhengPeng7/BiRefNet_lite — upstream model source and licence lineage.
