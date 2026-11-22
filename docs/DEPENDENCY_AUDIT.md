@@ -40,7 +40,7 @@ The pre-simplification implementation also contained batch/ZIP modules, alpha-fe
 
 - The main page statically imports no editor or batch-processing component.
 - The worker entry is created only when a removal action starts. Transformers.js is dynamically imported only for AI removal.
-- The pre-simplification baseline showed a 902.08 kB worker runtime chunk and 21,596.02 kB ONNX Runtime WASM asset. The focused app should be remeasured in the next successful production build to quantify the reduction.
+- The post-simplification Vercel build shows route JavaScript reduced from 56.18 kB to 14.44 kB (-74.3%) and CSS from 19.60 kB to 6.31 kB (-67.8%). The worker runtime (902.08 kB) and ONNX WASM (21,596.02 kB) remain unchanged and are key Phase 3 optimisation targets. Detailed measurements are in `docs/BASELINE.md`.
 - Batch processing, ZIP export, brushes, undo/redo, crop, background replacement, shadows, and multi-format export remain outside the initial release.
 
 ## Removal decision
