@@ -1,6 +1,7 @@
 <script lang="ts">
  import { onMount } from 'svelte';
  import { releaseImageResources } from '$lib/image/resource-lifecycle.js';
+ import { removeColorPixels } from '$lib/image/remove-color.js';
 
  type RemovalMode = 'ai' | 'manual';
  type SampleColor = { r: number; g: number; b: number };
@@ -15,13 +16,23 @@
  let split = $state(50);
  let tolerance = $state(48);
  let manualColor = $state<SampleColor | null>(null);
+ let manualResult = $state('');
+ let manualPreview = $state('');
+ let displayCutout = $derived(removalMode === 'manual' ? (manualPreview || manualResult) : cutout);
+ let manualCurrentKey = $derived(manualColor ? [manualColor.r, manualColor.g, manualColor.b, tolerance].join(':') : '');
+ let canDownload = $derived(removalMode === 'manual' ? Boolean(manualResult && manualAppliedKey && manualAppliedKey === manualCurrentKey) : Boolean(cutout));
  let aiDownloadProgress = $state<number | null>(null);
  let aiDownloadFile = $state('');
  let aiStage = $state<'loading' | 'processing'>('loading');
  let picker = $state<HTMLInputElement | undefined>(undefined);
- let manualImage = $state<HTMLImageElement | undefined>(undefined);
+ let manualImage: HTMLImageElement | null = null;
  let worker: Worker | undefined;
  let selectionRequest = 0;
+ let previewRequest = 0;
+ let previewTimer: ReturnType<typeof setTimeout> | undefined;
+ let processingMode: RemovalMode = 'ai';
+ let pendingManualKey = '';
+ let manualAppliedKey = '';
 
  async function selectImage(nextFile?: File) {
   if (!nextFile) return;
@@ -55,12 +66,19 @@
   // Ignore slow validation results when the user has already selected another file or reset.
   if (request !== selectionRequest) return;
 
-  releaseImageResources({ worker, objectUrls: [original, cutout] });
+  previewRequest += 1;
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = undefined;
+  releaseImageResources({ worker, objectUrls: [original, cutout, manualResult, manualPreview] });
   worker = undefined;
+  manualImage = null;
 
   file = nextFile;
   original = URL.createObjectURL(nextFile);
   cutout = '';
+  manualResult = '';
+  manualPreview = '';
+  manualAppliedKey = '';
   manualColor = null;
   error = '';
   busy = false;
@@ -71,17 +89,19 @@
  function setRemovalMode(nextMode: RemovalMode) {
   if (removalMode === nextMode) return;
 
-  // Stop any active job so an old result cannot appear under the newly selected method.
-  releaseImageResources({ worker, objectUrls: [cutout] });
+  // Stop any active job and release only the transient preview. Keep committed AI/manual results.
+  previewRequest += 1;
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = undefined;
+  releaseImageResources({ worker, objectUrls: [manualPreview] });
   worker = undefined;
+  manualPreview = '';
   removalMode = nextMode;
   manualColor = null;
   error = '';
   busy = false;
   aiDownloadProgress = null;
   aiDownloadFile = '';
-
-  cutout = '';
  }
 
  function ensureWorker() {
@@ -105,8 +125,16 @@
      aiStage = 'loading';
     }
    } else if (event.data?.type === 'result' && event.data.blob instanceof Blob) {
-    releaseImageResources({ objectUrls: [cutout] });
-    cutout = URL.createObjectURL(event.data.blob);
+    const resultUrl = URL.createObjectURL(event.data.blob);
+    if (processingMode === 'manual') {
+     releaseImageResources({ objectUrls: [manualResult, manualPreview] });
+     manualResult = resultUrl;
+     manualPreview = '';
+     manualAppliedKey = pendingManualKey;
+    } else {
+     releaseImageResources({ objectUrls: [cutout] });
+     cutout = resultUrl;
+    }
     busy = false;
     aiDownloadProgress = null;
     aiDownloadFile = '';
@@ -131,8 +159,10 @@
  function beginProcessing(message: Record<string, unknown>) {
   if (!file) return;
 
-  releaseImageResources({ objectUrls: [cutout] });
-  cutout = '';
+  processingMode = message.type === 'process-manual' ? 'manual' : 'ai';
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = undefined;
+  previewRequest += 1;
   error = '';
   busy = true;
   aiDownloadProgress = null;
@@ -161,28 +191,118 @@
   error = 'Processing cancelled.';
  }
 
- function pickBackgroundColor(event: MouseEvent) {
-  const image = manualImage;
-  if (!image || !image.naturalWidth || !image.naturalHeight) return;
-
-  const rect = image.getBoundingClientRect();
-  const x = Math.max(0, Math.min(image.naturalWidth - 1, Math.floor((event.clientX - rect.left) * image.naturalWidth / rect.width)));
-  const y = Math.max(0, Math.min(image.naturalHeight - 1, Math.floor((event.clientY - rect.top) * image.naturalHeight / rect.height)));
-  // Sample only the selected source pixel instead of allocating a full-resolution canvas.
-  const canvas = document.createElement('canvas');
-  canvas.width = 1;
-  canvas.height = 1;
-
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context) {
-   error = 'This browser could not sample the image colour.';
-   return;
+ async function loadManualSourceImage(): Promise<HTMLImageElement> {
+  if (manualImage && manualImage.src === original && manualImage.complete && manualImage.naturalWidth) {
+   return manualImage;
   }
 
-  context.drawImage(image, x, y, 1, 1, 0, 0, 1, 1);
-  const pixel = context.getImageData(0, 0, 1, 1).data;
-  manualColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
-  error = '';
+  const image = new Image();
+  image.src = original;
+  await image.decode();
+  if (!image.naturalWidth || !image.naturalHeight) {
+   throw new Error('The selected image could not be decoded for colour sampling.');
+  }
+  manualImage = image;
+  return image;
+ }
+
+ async function pickBackgroundColor(event: MouseEvent) {
+  const visibleImage = (event.currentTarget as HTMLElement).querySelector('img');
+  if (!visibleImage || !visibleImage.naturalWidth || !visibleImage.naturalHeight) return;
+
+  const rect = visibleImage.getBoundingClientRect();
+  const x = Math.max(0, Math.min(visibleImage.naturalWidth - 1, Math.floor((event.clientX - rect.left) * visibleImage.naturalWidth / rect.width)));
+  const y = Math.max(0, Math.min(visibleImage.naturalHeight - 1, Math.floor((event.clientY - rect.top) * visibleImage.naturalHeight / rect.height)));
+
+  try {
+   const image = await loadManualSourceImage();
+   const canvas = document.createElement('canvas');
+   canvas.width = 1;
+   canvas.height = 1;
+   const context = canvas.getContext('2d', { willReadFrequently: true });
+   if (!context) throw new Error('This browser could not sample the image colour.');
+
+   context.drawImage(image, x, y, 1, 1, 0, 0, 1, 1);
+   const pixel = context.getImageData(0, 0, 1, 1).data;
+   previewRequest += 1;
+   if (previewTimer) clearTimeout(previewTimer);
+   releaseImageResources({ objectUrls: [manualPreview, manualResult] });
+   manualPreview = '';
+   manualResult = '';
+   manualAppliedKey = '';
+   manualColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
+   error = '';
+   scheduleManualPreview();
+   canvas.width = 0;
+   canvas.height = 0;
+  } catch (sampleError) {
+   error = sampleError instanceof Error ? sampleError.message : 'This browser could not sample the image colour.';
+  }
+ }
+
+ function scheduleManualPreview() {
+  if (!file || !manualColor || removalMode !== 'manual') return;
+  previewRequest += 1;
+  const request = previewRequest;
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+   previewTimer = undefined;
+   void previewManualRemoval(request);
+  }, 120);
+ }
+
+ async function previewManualRemoval(request: number) {
+  if (!file || !manualColor || removalMode !== 'manual') return;
+  const color = { ...manualColor };
+  const previewTolerance = tolerance;
+  let canvas: HTMLCanvasElement | null = null;
+  let frame: ImageData | null = null;
+
+  try {
+   const image = await loadManualSourceImage();
+   if (request !== previewRequest || removalMode !== 'manual') return;
+
+   const maxSide = 512;
+   const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+   const width = Math.max(1, Math.round(image.naturalWidth * scale));
+   const height = Math.max(1, Math.round(image.naturalHeight * scale));
+   canvas = document.createElement('canvas');
+   canvas.width = width;
+   canvas.height = height;
+   const context = canvas.getContext('2d', { willReadFrequently: true });
+   if (!context) throw new Error('This browser could not create a manual-removal preview.');
+
+   context.drawImage(image, 0, 0, width, height);
+   frame = context.getImageData(0, 0, width, height);
+   removeColorPixels(frame.data, color, previewTolerance);
+   context.putImageData(frame, 0, 0);
+   const blob = await new Promise<Blob | null>((resolve) => canvas?.toBlob(resolve, 'image/png'));
+   if (!blob) throw new Error('This browser could not create the manual-removal preview.');
+   if (request !== previewRequest || removalMode !== 'manual') return;
+
+   releaseImageResources({ objectUrls: [manualPreview] });
+   manualPreview = URL.createObjectURL(blob);
+  } catch (previewError) {
+   if (request !== previewRequest) return;
+   error = previewError instanceof Error ? previewError.message : 'Manual-removal preview failed.';
+  } finally {
+   frame?.data.fill(0);
+   if (canvas) {
+    canvas.width = 0;
+    canvas.height = 0;
+   }
+  }
+ }
+
+ function chooseManualColorAgain() {
+  previewRequest += 1;
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = undefined;
+  releaseImageResources({ objectUrls: [manualPreview, manualResult] });
+  manualPreview = '';
+  manualResult = '';
+  manualAppliedKey = '';
+  manualColor = null;
  }
 
  function removeWithoutAi() {
@@ -191,6 +311,7 @@
    return;
   }
 
+  pendingManualKey = [manualColor.r, manualColor.g, manualColor.b, tolerance].join(':');
   beginProcessing({
    type: 'process-manual',
    color: manualColor,
@@ -210,19 +331,28 @@
 
  function download() {
   if (!cutout) return;
+  const result = removalMode === 'manual' ? manualResult : cutout;
+  if (!result) return;
   const anchor = document.createElement('a');
-  anchor.href = cutout;
+  anchor.href = result;
   anchor.download = 'pixelcutout.png';
   anchor.click();
  }
 
  function reset() {
   selectionRequest += 1;
-  releaseImageResources({ worker, objectUrls: [original, cutout] });
+  previewRequest += 1;
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = undefined;
+  releaseImageResources({ worker, objectUrls: [original, cutout, manualResult, manualPreview] });
   worker = undefined;
+  manualImage = null;
   file = null;
   original = '';
   cutout = '';
+  manualResult = '';
+  manualPreview = '';
+  manualAppliedKey = '';
   manualColor = null;
   error = '';
   busy = false;
@@ -234,7 +364,10 @@
  onMount(() => {
   return () => {
    selectionRequest += 1;
-   releaseImageResources({ worker, objectUrls: [original, cutout] });
+   previewRequest += 1;
+   if (previewTimer) clearTimeout(previewTimer);
+   releaseImageResources({ worker, objectUrls: [original, cutout, manualResult, manualPreview] });
+   manualImage = null;
   };
  });
 </script>
