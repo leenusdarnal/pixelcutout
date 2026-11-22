@@ -32,7 +32,7 @@
  let previewTimer: ReturnType<typeof setTimeout> | undefined;
  let processingMode: RemovalMode = 'ai';
  let pendingManualKey = '';
- let manualAppliedKey = '';
+ let manualAppliedKey = $state('');
 
  async function selectImage(nextFile?: File) {
   if (!nextFile) return;
@@ -79,7 +79,6 @@
   manualResult = '';
   manualPreview = '';
   manualAppliedKey = '';
-  manualColor = null;
   error = '';
   busy = false;
   aiDownloadProgress = null;
@@ -330,7 +329,6 @@
  }
 
  function download() {
-  if (!cutout) return;
   const result = removalMode === 'manual' ? manualResult : cutout;
   if (!result) return;
   const anchor = document.createElement('a');
@@ -402,16 +400,16 @@
    <section class="editor">
     <div class="bar">
      <span>{file?.name}</span>
-     <button class="link" onclick={reset}>{cutout ? 'Try another image' : 'Start over'}</button>
+     <button class="link" onclick={reset}>{displayCutout || cutout ? 'Try another image' : 'Start over'}</button>
     </div>
     <div class="preview {mode}">
-     {#if cutout}
-      <img id="cutout-preview" class="cut" src={cutout} alt="Result with the background removed"/>
+     {#if displayCutout}
+      <img id="cutout-preview" class="cut" src={displayCutout} alt="Result with the background removed"/>
       <div class="before" style="clip-path:inset(0 {100 - Number(split)}% 0 0)">
        <img id="original-preview" src={original} alt="Original"/>
       </div>
       <span class="comparison-label original-label" aria-hidden="true">Original</span>
-      <span class="comparison-label result-label" aria-hidden="true">Background removed</span>
+      <span class="comparison-label result-label" aria-hidden="true">{removalMode === 'manual' && manualPreview ? 'Manual preview · reduced size' : 'Background removed'}</span>
       <div class="comparison-divider" style="left: {split}%" aria-hidden="true">
        <span class="comparison-handle">↔</span>
       </div>
@@ -428,7 +426,7 @@
       />
      {:else if removalMode === 'manual'}
       <button type="button" class="sampler" onclick={(event) => pickBackgroundColor(event)} aria-label="Sample the background colour from the image">
-       <img bind:this={manualImage} src={original} alt="" aria-hidden="true"/>
+       <img src={original} alt="" aria-hidden="true"/>
       </button>
      {:else}
       <img src={original} alt="Selected"/>
@@ -455,7 +453,7 @@
     </div>
 
 
-    {#if !cutout && !busy}
+    {#if !busy && (removalMode === 'manual' || !cutout)}
      <div class="tool-panel">
       {#if removalMode === 'ai'}
        <button class="primary" onclick={removeWithAi}>Remove background</button>
@@ -466,14 +464,15 @@
         <div class="sample-row">
          <span class="swatch" style="background: rgb({manualColor.r}, {manualColor.g}, {manualColor.b})"></span>
          <span>Selected colour: RGB {manualColor.r}, {manualColor.g}, {manualColor.b}</span>
-         <button class="link" onclick={() => manualColor = null}>Choose again</button>
+         <button class="link" onclick={chooseManualColorAgain}>Choose again</button>
         </div>
         <label class="tolerance-label" for="tolerance">
          <span>Colour tolerance</span>
          <strong>{tolerance}</strong>
         </label>
-        <input id="tolerance" class="tolerance" type="range" min="10" max="150" step="1" bind:value={tolerance}/>
+        <input id="tolerance" class="tolerance" type="range" min="10" max="150" step="1" value={tolerance} oninput={(event) => { tolerance = Number(event.currentTarget.value); scheduleManualPreview(); }}/>
         <small class="helper">Increase tolerance to remove more shades of the selected colour. Matching colours inside the subject may also become transparent.</small>
+        <small class="helper">Preview is reduced to 512 pixels on the longest side. Click Remove selected colour to apply it at full resolution.</small>
         <button class="primary" onclick={removeWithoutAi}>Remove selected colour</button>
        {:else}
         <small class="helper">Manual colour removal works best when the background has a fairly uniform colour.</small>
@@ -497,7 +496,7 @@
       <button class:active={mode === 'dark'} onclick={() => mode = 'dark'}>Dark</button>
      </div>
     </div>
-    {#if cutout}
+    {#if canDownload}
      <div class="actions">
       <button class="primary" onclick={download}>Download PNG</button>
      </div>
