@@ -89,8 +89,12 @@
  function ensureWorker() {
   if (worker) return;
 
-  worker = new Worker(new URL('../lib/workers/remove-background.ts', import.meta.url), { type: 'module' });
-  worker.onmessage = (event: MessageEvent) => {
+  const activeWorker = new Worker(new URL('../lib/workers/remove-background.ts', import.meta.url), { type: 'module' });
+  worker = activeWorker;
+  activeWorker.onmessage = (event: MessageEvent) => {
+   // Ignore queued events from a worker that was replaced, cancelled, or terminated.
+   if (worker !== activeWorker) return;
+
    if (event.data?.type === 'download-progress') {
     const value = Number(event.data.progress);
     aiDownloadProgress = Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
@@ -116,11 +120,12 @@
    }
   };
 
-  worker.onerror = () => {
+  activeWorker.onerror = () => {
+   if (worker !== activeWorker) return;
    error = 'The image-processing worker stopped unexpectedly. Please try again in a recent browser.';
    busy = false;
    aiDownloadProgress = null;
-   worker?.terminate();
+   activeWorker.terminate();
    worker = undefined;
   };
  }
