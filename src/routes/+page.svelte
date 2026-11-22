@@ -281,7 +281,7 @@
      {#if cutout}
       <img id="cutout-preview" class="cut" src={cutout} alt="Result with the background removed"/>
       <div class="before" style="clip-path:inset(0 {100 - Number(split)}% 0 0)">
-       <img id="original-preview" src={original} alt="Original image"/>
+       <img id="original-preview" src={original} alt="Original"/>
       </div>
       <span class="comparison-label original-label" aria-hidden="true">Original</span>
       <span class="comparison-label result-label" aria-hidden="true">Background removed</span>
