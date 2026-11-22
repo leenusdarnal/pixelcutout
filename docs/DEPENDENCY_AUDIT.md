@@ -29,7 +29,7 @@ The lockfile was regenerated from the pinned `package.json` and validated in CI:
 - Package entries: **176**, including the project root (175 dependency entries).
 - File size: **86,357 bytes**.
 - Linux x64 clean install: **104 packages added**.
-- A subsequent normal locked-install CI run is required to prove the committed file works without regeneration; the current validation run regenerated an equivalent lockfile, installed it, and completed the build.
+- The final clean-checkout CI run [#108](https://github.com/leenusdarnal/pixelcutout/actions/runs/45015590490) validated the committed lockfile directly without regeneration, completed `npm ci`, reported the two residual audit findings, and passed all tests, type checks, and production build. The Vercel check for the same PR head also passed.
 
 Do not hand-edit the lockfile. When direct dependency versions or overrides change, update it with npm and commit the complete generated file.
 
