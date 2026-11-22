@@ -285,8 +285,6 @@
      {/if}
     </div>
 
-    {#if cutout}
-    {/if}
 
     {#if !cutout && !busy}
      <div class="tool-panel">
