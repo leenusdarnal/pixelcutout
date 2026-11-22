@@ -53,6 +53,35 @@ function webpExtended(width, height) {
   return new Blob([bytes], { type: 'image/webp' });
 }
 
+function webpLossy(width, height) {
+  const bytes = new Uint8Array(30);
+  ascii(bytes, 0, 'RIFF');
+  ascii(bytes, 8, 'WEBP');
+  ascii(bytes, 12, 'VP8 ');
+  bytes[23] = 0x9d;
+  bytes[24] = 0x01;
+  bytes[25] = 0x2a;
+  const view = new DataView(bytes.buffer);
+  view.setUint16(26, width, true);
+  view.setUint16(28, height, true);
+  return new Blob([bytes], { type: 'image/webp' });
+}
+
+function webpLossless(width, height) {
+  const bytes = new Uint8Array(30);
+  ascii(bytes, 0, 'RIFF');
+  ascii(bytes, 8, 'WEBP');
+  ascii(bytes, 12, 'VP8L');
+  bytes[20] = 0x2f;
+  const w = width - 1;
+  const h = height - 1;
+  bytes[21] = w & 0xff;
+  bytes[22] = ((w >> 8) & 0x3f) | ((h & 0x03) << 6);
+  bytes[23] = (h >> 2) & 0xff;
+  bytes[24] = (h >> 10) & 0x0f;
+  return new Blob([bytes], { type: 'image/webp' });
+}
+
 test('reads PNG dimensions from its IHDR header without decoding pixels', async () => {
   assert.deepEqual(await readImageDimensions(png(2048, 1024)), { width: 2048, height: 1024 });
 });
@@ -63,6 +92,14 @@ test('reads JPEG dimensions from a Start Of Frame segment', async () => {
 
 test('reads WebP extended dimensions from the VP8X header', async () => {
   assert.deepEqual(await readImageDimensions(webpExtended(1920, 1080)), { width: 1920, height: 1080 });
+});
+
+test('reads WebP lossy dimensions from the VP8 frame header', async () => {
+  assert.deepEqual(await readImageDimensions(webpLossy(1280, 720)), { width: 1280, height: 720 });
+});
+
+test('reads WebP lossless dimensions from the VP8L header', async () => {
+  assert.deepEqual(await readImageDimensions(webpLossless(640, 480)), { width: 640, height: 480 });
 });
 
 test('rejects a type and signature mismatch or malformed header', async () => {
