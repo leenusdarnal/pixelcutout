@@ -29,8 +29,37 @@ jobs:
         run: |
           test -s package.json
           test -s package-lock.json
+          node -e "const lock = require('./package-lock.json'); if (lock.lockfileVersion !== 3 || !lock.packages?.['']) process.exit(1); console.log('lockfileVersion:', lock.lockfileVersion, 'package entries:', Object.keys(lock.packages).length)"
+          node --version
+          npm --version
           npm config get package-lock
       - name: Install dependencies
         run: npm ci --package-lock=true --no-audit --no-fund --onnxruntime-node-install-cuda=skip
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=low
+      - name: Report all dependency advisories
+        run: |
+          npm audit --json > /tmp/npm-audit-all.json || true
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync('/tmp/npm-audit-all.json', 'utf8'));
+          } catch (error) {
+            console.log(`Full dependency audit report unavailable: ${error.message}`);
+            process.exit(0);
+          }
+
+          console.log('Full dependency audit counts:', JSON.stringify(report.metadata?.vulnerabilities ?? null));
+          for (const [name, finding] of Object.entries(report.vulnerabilities ?? {})) {
+            const via = (finding.via ?? []).map((item) =>
+              typeof item === 'string' ? item : `${item.name}: ${item.title ?? item.url ?? ''}`
+            );
+            console.log(
+              `${finding.severity} ${name}@${finding.range}; direct=${finding.isDirect}; fix=${JSON.stringify(finding.fixAvailable)}; via=${via.join(' | ')}`
+            );
+          }
+          NODE
       - name: Build, type-check and run unit tests
         run: npm run build
