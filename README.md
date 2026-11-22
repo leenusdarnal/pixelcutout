@@ -1,56 +1,60 @@
 # PixelCutout
 
-PixelCutout is a privacy-first, browser-based background remover. Image pixels are processed locally in the visitor's browser and are never uploaded to an application server.
+PixelCutout is a privacy-first, browser-based background remover. It processes one image at a time, entirely on the user's device. Image pixels are never uploaded to an application server.
 
-## Removal methods
+## Core workflow
 
-PixelCutout gives users two choices:
+1. Choose one PNG, JPG, or WebP image (up to 20 MB).
+2. Click **Remove background** to start AI processing. The AI runtime and model are loaded only after this explicit action.
+3. Compare the original and cutout with the before/after slider.
+4. Download a full-resolution transparent PNG.
 
-- **AI automatic:** Uses [Xenova/modnet](https://huggingface.co/Xenova/modnet) to identify and remove the subject background. The AI runtime is imported only when the user starts AI removal. The browser uses the compact `q4f16` WebGPU model where supported and falls back to the `uint8` WASM model. The interface displays the current model-file download progress as a percentage. The model is cached by the browser where supported.
-- **Without AI:** Lets the user click a background colour in the image, adjust the colour tolerance, and remove matching colours. It does not download an AI model. This works best for plain or fairly uniform backgrounds; matching colours inside the subject may also become transparent.
+AI removal is the primary method. **Advanced: manual colour removal** is available for simple, fairly uniform backgrounds. It samples a colour from the image and applies an adjustable tolerance locally.
 
-## Studio editor
+## Privacy
 
-After removal, the local Studio editor provides:
+- Source image pixels remain in the browser and are passed to a local Web Worker for processing.
+- AI mode downloads the model and runtime assets from public model hosts after the user starts removal. These are model files, not image uploads.
+- Manual colour removal does not load the AI runtime or download model files.
+- PixelCutout does not send image pixels to an application server, model host, analytics service, or cloud storage.
+- The service worker caches the compiled app and explicit static PWA assets; it does not cache remote model downloads or user-selected images.
 
-- **Erase and restore brushes** with adjustable size. Restore uses the original AI cutout as its source.
-- **Undo and redo** using small changed-image tiles, with a bounded 24-stroke history.
-- **Background previews and replacement:** transparent checkerboard, white, soft neutral, dark, gradient, or a locally selected photo. A custom solid colour is also available.
-- **Soft shadow** control for product-style exports.
-- **Crop presets:** original, square (1:1), portrait (4:5), story (9:16), and landscape (16:9), plus an automatic crop around visible pixels.
-- **Export:** transparent PNG, JPEG, or WebP, and copy the selected image format to the clipboard when supported.
+A first-time AI run requires an internet connection to download model assets. The manual colour method works without downloading the AI model.
 
-Brush edits, cropping, background composition, and export are handled locally in the browser. Choosing JPEG or WebP with a transparent background uses white so that the file has a valid opaque background.
+## AI model and limitations
+
+The AI workflow currently uses [Xenova/modnet](https://huggingface.co/Xenova/modnet), a portrait-matting model published under Apache-2.0. It is designed primarily for people and portraits; results on pets, products, fine objects, glass, and complex scenes may be less reliable.
+
+The browser tries the WebGPU model first and falls back to the WASM model. Browser, driver, and device compatibility vary. The model/runtime benchmark is tracked before any production model replacement.
+
+## Lightweight scope
+
+The initial product intentionally focuses on one-image upload, AI background removal, advanced manual colour removal, before/after comparison, and transparent PNG export.
+
+Batch processing, ZIP export, brush editing, undo/redo, crop tools, background replacement, shadows, multiple export formats, accounts, cloud history, and backend image processing are out of scope.
 
 ## Stack
 
 - Svelte 5 + SvelteKit
-- Transformers.js 3.8.1 and ONNX Runtime Web
-- Web Worker inference and local image processing
-- Static hosting on Vercel
-
-## AI model
-
-The AI option uses the Apache-2.0 licensed [Xenova/modnet](https://huggingface.co/Xenova/modnet), a portrait-matting model. It is designed primarily for people and portraits; results on products, pets, and other non-human subjects may be less reliable.
-
-WebGPU is attempted first, with a WebAssembly fallback. Browser and device compatibility still vary.
-
-## Current limitations
-
-- MODNet is primarily a portrait matting model. It can be less reliable for pets, products, fine objects, glass, and complex scenes.
-- Crop presets use a centered crop; they do not yet provide a draggable crop frame.
-- Batch queues, ZIP export, advanced hair decontamination, and installable offline PWA support are not included in this release.
+- TypeScript + Vite
+- Transformers.js with ONNX Runtime Web
+- Browser Web Worker for image processing
+- Static hosting
 
 ## Development
 
-\`\`\`bash
-npm ci
+Use Node.js 22 and the committed npm lockfile.
+
+```sh
+npm ci --no-audit --no-fund --onnxruntime-node-install-cuda=skip
 npm run dev
 npm run test
 npm run check
 npm run build
-\`\`\`
+```
 
-## Privacy
+The ONNX Runtime Node package has a post-install step that may attempt to download its optional CUDA provider. The install flag skips that optional Node CUDA download; it does not disable the browser's WebGPU or WASM inference paths.
 
-Image files are decoded and processed on-device. AI mode downloads model and runtime assets from public model hosts, but does not send user image pixels to those hosts or to an application server. No-AI mode uses local colour matching and does not load the AI runtime or download model files. First-time AI model use requires an internet connection.
+## Project tracking
+
+The implementation plan and acceptance checks are maintained in [docs/PROJECT_TRACKER.md](docs/PROJECT_TRACKER.md). See [docs/BASELINE.md](docs/BASELINE.md) and [docs/DEPENDENCY_AUDIT.md](docs/DEPENDENCY_AUDIT.md) for the measured pre-simplification baseline and dependency inventory.
