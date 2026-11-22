@@ -9,7 +9,9 @@ PixelCutout is a privacy-first, browser-based background remover. It processes o
 3. Compare the original and cutout with the before/after slider.
 4. Download a full-resolution transparent PNG.
 
-AI removal is the primary method. **Advanced: manual colour removal** is available for simple, fairly uniform backgrounds. It samples a colour from the image and applies an adjustable tolerance locally.
+AI removal is the primary method. **Advanced: manual colour removal** is available for simple, fairly uniform backgrounds.
+
+To use it, open **Advanced: manual colour removal**, click the background to sample a colour, then adjust the tolerance. PixelCutout shows a debounced, reduced-size preview (maximum 512 pixels on the longest side) before you apply it. Click **Remove selected colour** to process the original image at full resolution. The original and AI result are kept separately; switching between AI and manual mode does not overwrite either result. **Choose again** clears the current manual edit so you can sample another colour. A manual preview cannot be downloaded as though it were a full-resolution result; download is enabled only after the current colour and tolerance have been applied.
 
 ## Privacy
 
