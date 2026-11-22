@@ -1,5 +1,6 @@
 <script lang="ts">
  import { onMount } from 'svelte';
+ import { releaseImageResources } from '$lib/image/resource-lifecycle.js';
 
  type RemovalMode = 'ai' | 'manual';
  type SampleColor = { r: number; g: number; b: number };
@@ -54,10 +55,8 @@
   // Ignore slow validation results when the user has already selected another file or reset.
   if (request !== selectionRequest) return;
 
-  worker?.terminate();
+  releaseImageResources({ worker, objectUrls: [original, cutout] });
   worker = undefined;
-  if (original) URL.revokeObjectURL(original);
-  if (cutout) URL.revokeObjectURL(cutout);
 
   file = nextFile;
   original = URL.createObjectURL(nextFile);
@@ -73,7 +72,7 @@
   if (removalMode === nextMode) return;
 
   // Stop any active job so an old result cannot appear under the newly selected method.
-  worker?.terminate();
+  releaseImageResources({ worker, objectUrls: [cutout] });
   worker = undefined;
   removalMode = nextMode;
   manualColor = null;
@@ -125,7 +124,7 @@
    error = 'The image-processing worker stopped unexpectedly. Please try again in a recent browser.';
    busy = false;
    aiDownloadProgress = null;
-   activeWorker.terminate();
+   releaseImageResources({ worker: activeWorker });
    worker = undefined;
   };
  }
@@ -155,7 +154,7 @@
  }
 
  function cancelProcessing() {
-  worker?.terminate();
+  releaseImageResources({ worker });
   worker = undefined;
   busy = false;
   aiDownloadProgress = null;
@@ -220,10 +219,8 @@
 
  function reset() {
   selectionRequest += 1;
-  worker?.terminate();
+  releaseImageResources({ worker, objectUrls: [original, cutout] });
   worker = undefined;
-  if (original) URL.revokeObjectURL(original);
-  if (cutout) URL.revokeObjectURL(cutout);
   file = null;
   original = '';
   cutout = '';
@@ -238,9 +235,7 @@
  onMount(() => {
   return () => {
    selectionRequest += 1;
-   worker?.terminate();
-   if (original) URL.revokeObjectURL(original);
-   if (cutout) URL.revokeObjectURL(cutout);
+   releaseImageResources({ worker, objectUrls: [original, cutout] });
   };
  });
 </script>
@@ -275,7 +270,7 @@
    <section class="editor">
     <div class="bar">
      <span>{file?.name}</span>
-     <button class="link" onclick={reset}>Start over</button>
+     <button class="link" onclick={reset}>{cutout ? 'Try another image' : 'Start over'}</button>
     </div>
     <div class="preview {mode}">
      {#if cutout}
