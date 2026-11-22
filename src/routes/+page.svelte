@@ -1,7 +1,7 @@
 <script lang="ts">
  import { onMount } from 'svelte';
- import StudioEditor from '$lib/components/StudioEditor.svelte';
- import BatchProcessor from '$lib/components/BatchProcessor.svelte';
+ import StudioEditor from '#lib/components/StudioEditor.svelte';
+ import BatchProcessor from '#lib/components/BatchProcessor.svelte';
 
  type RemovalMode = 'ai' | 'manual';
  type SampleColor = { r: number; g: number; b: number };
@@ -309,7 +309,7 @@
     </div>
 
     {#if cutout}
-     <StudioEditor src={cutout} onError={(message) => error = message}/>
+     <StudioEditor src={cutout} onError={(message: string) => error = message}/>
     {/if}
 
     {#if !cutout && !busy}
