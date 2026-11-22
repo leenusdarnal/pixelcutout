@@ -1,9 +1,9 @@
 # SvelteKit Major Migration Plan
 
-**Status:** Planned; implementation not started  
-**Decision date:** 2026-11-22  
-**Current baseline:** SvelteKit 2.70.4, `@sveltejs/adapter-static` 3.0.11, Svelte 5.57.3, Vite 6.4.6  
-**Proposed target:** SvelteKit 3 with a compatible `@sveltejs/adapter-static` 4 release and compatible Svelte/Vite/plugin/TypeScript tooling. Resolve exact versions from official release notes and peer-dependency constraints when implementation begins; do not treat the baseline or audit's suggested versions as a future pin.
+**Status:** Migration implemented on chore/sveltekit-3-migration; awaiting pull-request CI and preview verification before merge
+**Decision date:** 2026-11-22
+**Pre-migration baseline:** SvelteKit 2.70.4, `@sveltejs/adapter-static` 3.0.11, Svelte 5.57.3, Vite 6.4.6
+**Implemented target:** SvelteKit 3.4.0, adapter-static 4.0.1, Svelte 5.57.3, vite-plugin-svelte 7.3.1, Vite 8.3.8, TypeScript 6.0.3, svelte-check 4.7.8; Node.js >=22.17.0 (validated on 22.23.5).
 
 ## Goal and constraints
 
@@ -31,17 +31,17 @@ Preserve these product constraints:
 
 ## Acceptance gates
 
-- [ ] Official migration notes and supported package/Node ranges reviewed; exact target versions recorded.
-- [ ] Clean lockfile install succeeds using the repository's Node/npm toolchain.
-- [ ] Unit tests, Svelte/TypeScript checks, and production build pass.
-- [ ] Static adapter output is complete; deployment remains static and no server runtime is introduced.
-- [ ] Production dependency audit has no unresolved production advisories; full audit findings and accepted exceptions are documented.
+- [x] Official migration notes and supported package/Node ranges reviewed; exact target versions recorded.
+- [x] Clean lockfile install succeeds using the repository's Node/npm toolchain.
+- [x] Unit tests, Svelte/TypeScript checks, and production build pass.
+- [x] Static adapter output is complete; deployment remains static and no server runtime is introduced.
+- [x] Production dependency audit has no unresolved production advisories; full audit findings and accepted exceptions are documented.
 - [ ] Initial app load does not fetch AI model/runtime assets; inference starts only after the user action.
 - [ ] Browser-only image processing, worker lifecycle, cancellation, and WebGPU/WASM fallback remain functional.
 - [ ] Privacy/network inspection confirms image pixels are not uploaded or persisted remotely.
 - [ ] Desktop/mobile preview checks pass for core AI and manual workflows, before/after preview, and transparent PNG export.
-- [ ] Dependency and bundle-size changes are measured and justified; no unrelated dependency or feature scope is added.
-- [ ] README, dependency audit, project tracker, and release evidence are updated before merge.
+- [x] Dependency and bundle-size changes are measured and justified; no unrelated dependency or feature scope is added.
+- [x] README, dependency audit, project tracker, and release evidence are updated before merge.
 
 ## Risks and mitigations
 
@@ -61,6 +61,27 @@ Preserve these product constraints:
 - Adding server-side image processing, accounts, analytics, batch processing, or unrelated UI features.
 - Forcing major upgrades of unrelated dependencies solely to reduce the audit count.
 
-## Current state
+## Implementation record (2026-11-22)
 
-No package versions, application code, or deployment configuration have been changed for this migration. The current app remains on the SvelteKit 2 baseline until all acceptance gates are met.
+- Official task-based migration: sv migrate sveltekit-3, using sv 1.7.0; all 12 automated tasks applied.
+- Configuration moved from svelte.config.js into the SvelteKit Vite plugin; the obsolete config file was removed.
+- tsconfig now extends $app/tsconfig. The service worker and Node test files are excluded from the app TypeScript project; svelte-check reports 0 errors and 0 warnings.
+- Replaced $lib imports with the #lib Node subpath alias and migrated the removed $service-worker imports to $app/env, $app/manifest, and $app/paths.
+- The service worker still caches only same-origin app output and selected local PWA assets. Remote model downloads and user image data remain excluded.
+- Kept adapter-static and the Vercel build output directory; no server runtime or application backend was introduced.
+- Clean npm ci, all 34 tests, Svelte checks, Vite production builds (client/server/service worker), and both production/full npm audits pass. The full audit currently reports zero vulnerabilities.
+- The generated migration task document was reviewed and removed. Its development-only CORS note is not applicable: the app does not serve static assets cross-origin during local development.
+
+## Remaining verification before merge
+
+### CI and preview deployment evidence (2026-11-22)
+
+- [x] GitHub Actions run [#120](https://github.com/leenusdarnal/pixelcutout/actions/runs/45030358627) passed: dependency installation, production audit, full advisory report, build, type-check, 34 unit tests, and cleanup steps.
+- [x] Vercel preview deployment is READY for commit `82a8e124634d510e781631c4134061131c433ac9`: [preview URL](https://pixelcutout-322089iwd-leenusdarnals-projects.vercel.app) · [deployment details](https://vercel.com/leenusdarnals-projects/pixelcutout/AMDGCe2zo1b1QcQRR5TVjFTXBpUx).
+- Automated HTTP inspection was redirected to Vercel login because this preview is protected. Live browser/network and end-to-end device checks therefore remain unverified; deployment protection was not changed.
+
+## Remaining verification before merge
+
+- [x] PR CI and Vercel preview deployment status pass.
+- [ ] Complete browser network inspection with authorized preview access: confirm no model/runtime request before the explicit AI action and no image pixels leave the browser.
+- [ ] Complete desktop and mobile workflow checks for AI removal, manual colour fallback, cancellation/replacement, before/after comparison, and transparent PNG export.

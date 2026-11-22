@@ -38,15 +38,16 @@ Batch processing, ZIP export, brush editing, undo/redo, crop tools, background r
 
 ## Stack
 
-- Svelte 5 + SvelteKit
-- TypeScript + Vite
+- Svelte 5.57.3 + SvelteKit 3.4.0
+- TypeScript 6.0.3 + Vite 8.3.8
+- Static output through adapter-static 4.0.1
 - Transformers.js with ONNX Runtime Web
 - Browser Web Worker for image processing
 - Static hosting
 
 ## Development
 
-Use Node.js 22 and the committed npm lockfile.
+Use Node.js 22.17.0 or later and the committed npm lockfile (validated with Node 22.23.5 and npm 10.9.9).
 
 ```sh
 npm ci --no-audit --no-fund --onnxruntime-node-install-cuda=skip
@@ -60,4 +61,4 @@ The ONNX Runtime Node package has a post-install step that may attempt to downlo
 
 ## Project tracking
 
-The implementation plan and acceptance checks are maintained in [docs/PROJECT_TRACKER.md](docs/PROJECT_TRACKER.md). The proposed SvelteKit major upgrade is documented in [docs/SVELTEKIT_MIGRATION_PLAN.md](docs/SVELTEKIT_MIGRATION_PLAN.md); it has not been executed. See [docs/BASELINE.md](docs/BASELINE.md) and [docs/DEPENDENCY_AUDIT.md](docs/DEPENDENCY_AUDIT.md) for the measured pre-simplification baseline and dependency inventory.
+The implementation plan and acceptance checks are maintained in [docs/PROJECT_TRACKER.md](docs/PROJECT_TRACKER.md). The SvelteKit 3 migration implementation and verification record are maintained in [docs/SVELTEKIT_MIGRATION_PLAN.md](docs/SVELTEKIT_MIGRATION_PLAN.md); the migration is under review in PR [#26](https://github.com/leenusdarnal/pixelcutout/pull/26). CI and the Vercel preview build passed; protected-preview browser/device verification remains before merge. See [docs/BASELINE.md](docs/BASELINE.md) and [docs/DEPENDENCY_AUDIT.md](docs/DEPENDENCY_AUDIT.md) for the measured pre-simplification baseline and dependency inventory.

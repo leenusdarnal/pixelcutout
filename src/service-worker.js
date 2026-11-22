@@ -1,4 +1,6 @@
-import { build, files, version } from '$service-worker';
+import { version } from '$app/env';
+import { assets, immutable } from '$app/manifest';
+import { resolve } from '$app/paths';
 
 const CACHE_PREFIX = 'pixelcutout-';
 const CACHE_NAME = `${CACHE_PREFIX}${version}`;
@@ -7,8 +9,10 @@ const CACHE_NAME = `${CACHE_PREFIX}${version}`;
 // User-selected images use blob: URLs and remote AI model downloads are
 // intentionally excluded from this service worker's cache.
 const APP_ASSETS = [
-  ...build,
-  ...files.filter((path) => path.endsWith('.webmanifest') || path.endsWith('.svg'))
+  ...immutable.map(({ path }) => resolve(path)),
+  ...assets
+    .filter(({ path }) => path.endsWith('.webmanifest') || path.endsWith('.svg'))
+    .map(({ path }) => resolve(path))
 ];
 
 self.addEventListener('install', (event) => {

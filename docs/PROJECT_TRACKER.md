@@ -2,10 +2,10 @@
 
 > Living implementation tracker. Update this file as work is completed. Keep changes small, measurable, and aligned with the privacy-first, browser-only product.
 
-**Tracker version:** 1.0  
-**Status:** Implementation in progress  
-**Last updated:** 2026-11-22  
-**Product:** PixelCutout — one-image-at-a-time background removal  
+**Tracker version:** 1.1
+**Status:** Implementation in progress
+**Last updated:** 2026-11-22
+**Product:** PixelCutout — one-image-at-a-time background removal
 **Reference document:** `pixelcutout_project_tracker.docx` (project tracker document)
 
 ## 1. Product decisions (locked)
@@ -20,7 +20,7 @@
 
 ## 2. Lightweight guardrails
 
-- [ ] Keep the existing SvelteKit + Svelte + TypeScript stack lightweight. A SvelteKit major upgrade is now planned as a separate, gated maintenance migration; do not mix it with product-feature work.
+- [x] Keep the SvelteKit + Svelte + TypeScript stack lightweight. The SvelteKit 3 and adapter-static 4 upgrade is isolated in a maintenance branch with no feature/model scope.
 - [ ] Prefer existing utilities and browser APIs over new dependencies.
 - [ ] Add a dependency only when a measured requirement cannot be met with the current stack; record its size and rationale.
 - [ ] Load the AI runtime and model only after the user clicks **Remove Background**; never preload them on initial page load.
@@ -34,6 +34,15 @@
 - [ ] Measure initial bundle, model download, inference time, and peak memory on representative desktop and mobile devices before claiming performance.
 - [ ] Do not sacrifice output quality or privacy for an arbitrary small bundle target; document measured trade-offs.
 
+### SvelteKit 3 migration (maintenance track)
+
+- [x] Upgrade to SvelteKit 3.4.0 and adapter-static 4.0.1 with compatible Svelte/Vite/TypeScript tooling.
+- [x] Move framework configuration into vite.config.ts and remove svelte.config.js.
+- [x] Replace the $lib alias with the #lib Node subpath import and migrate service-worker APIs.
+- [x] Keep static deployment, worker-based processing, lazy AI runtime loading, and the existing image privacy boundary unchanged.
+- [x] Verify clean npm ci, 34 tests, 0 Svelte/TypeScript errors or warnings, static production build, and zero findings in both npm audits.
+- [x] Verify pull-request CI and successful Vercel preview deployment status (PR #26, GitHub Actions run #120; Vercel deployment READY).
+- [ ] Complete browser network privacy inspection and desktop/mobile workflows with authorized access to the protected preview.
 ## 3. Status legend
 
 Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Add owner, date, PR/commit, and evidence when useful. Do not mark a task Done without its acceptance check.
@@ -170,7 +179,7 @@ Record each candidate with the same image set and device/runtime conditions.
 | 2026-11-22 | Explicit user click starts inference | Avoid unexpected CPU/GPU work and model downloads |
 | 2026-11-22 | Before/after comparison and transparent PNG are the core result | Minimal, useful output flow |
 | 2026-11-22 | Benchmark model options before changing the current model | Quality and bundle/runtime trade-offs need evidence |
-| 2026-11-22 | Plan a separate SvelteKit major migration; do not combine it with product changes | Resolve documented development-tool advisories through a reviewed, tested framework/toolchain upgrade while preserving static hosting and browser-only processing |
+| 2026-11-22 | Implement SvelteKit 3.4.0 and adapter-static 4.0.1 on an isolated maintenance branch | Preserve static hosting and browser-only processing; full npm audit is clean. PR #26 CI run #120 passed and Vercel preview is READY; protected-preview browser privacy and device checks remain before merge |
 
 ## 10. Deferred / out of scope for first release
 
@@ -179,7 +188,7 @@ Record each candidate with the same image set and device/runtime conditions.
 - Brush editing, crop, background replacement, shadows, multi-format export.
 - Multiple production models without benchmark justification.
 - Analytics or telemetry that could collect image data.
-- Unrelated framework upgrades and feature work during the separately tracked SvelteKit major migration.
+- Unrelated framework upgrades or feature work bundled into the completed SvelteKit 3 maintenance change.
 
 ---
 
