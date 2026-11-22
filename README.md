@@ -28,7 +28,7 @@ A first-time AI run requires an internet connection to download model assets. Th
 
 The AI workflow currently uses [Xenova/modnet](https://huggingface.co/Xenova/modnet), a portrait-matting model published under Apache-2.0. It is designed primarily for people and portraits; results on pets, products, fine objects, glass, and complex scenes may be less reliable.
 
-The browser tries the WebGPU model first and falls back to the WASM model. Browser, driver, and device compatibility vary. The model/runtime benchmark is tracked before any production model replacement. If both runtimes fail, the app shows a recoverable error so you can retry or use manual colour removal.
+The browser tries the WebGPU model first and falls back to the WASM model. Browser, driver, and device compatibility vary. The model/runtime benchmark is tracked before any production model replacement. The exact model source, observed upstream revision, licence, and update procedure are documented in [docs/MODEL_PROVENANCE.md](docs/MODEL_PROVENANCE.md). If both runtimes fail, the app shows a recoverable error so you can retry or use manual colour removal.
 
 ## Lightweight scope
 
@@ -54,6 +54,7 @@ npm ci --no-audit --no-fund --onnxruntime-node-install-cuda=skip
 npm run dev
 npm run test
 npm run check
+npm run benchmark:validate
 npm run build
 ```
 
