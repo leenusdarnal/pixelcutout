@@ -25,12 +25,26 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Verify npm manifests
+      - name: Verify npm manifest and regenerate truncated lockfile
         run: |
           test -s package.json
-          test -s package-lock.json
-          npm config get package-lock
-      - name: Install dependencies
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          console.log('package.json parsed:', pkg.name, pkg.version);
+          NODE
+          rm -f package-lock.json
+          npm install --package-lock-only --package-lock=true --ignore-scripts --no-audit --no-fund --onnxruntime-node-install-cuda=skip
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const count = Object.keys(lock.packages ?? {}).length;
+          if (lock.lockfileVersion < 1 || count < 50) {
+            throw new Error(`Unexpected lockfile: version=${lock.lockfileVersion}, package entries=${count}`);
+          }
+          console.log(`Regenerated lockfile: version=${lock.lockfileVersion}, package entries=${count}, bytes=${fs.statSync('package-lock.json').size}`);
+          NODE
+      - name: Install from regenerated lockfile
         run: npm ci --package-lock=true --no-audit --no-fund --onnxruntime-node-install-cuda=skip
       - name: Report dependency audit
         run: |
@@ -64,3 +78,9 @@ jobs:
           NODE
       - name: Build, type-check and run unit tests
         run: npm run build
+      - name: Export generated lockfile for repository repair
+        run: |
+          echo LOCKFILE_BASE64_BEGIN
+          base64 -w0 package-lock.json | fold -w 2000
+          echo
+          echo LOCKFILE_BASE64_END
