@@ -32,5 +32,35 @@ jobs:
           npm config get package-lock
       - name: Install dependencies
         run: npm ci --package-lock=true --no-audit --no-fund --onnxruntime-node-install-cuda=skip
+      - name: Report dependency audit
+        run: |
+          npm audit --json > /tmp/npm-audit-all.json || true
+          npm audit --omit=dev --json > /tmp/npm-audit-production.json || true
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+
+          for (const [label, path] of [
+            ['all dependencies', '/tmp/npm-audit-all.json'],
+            ['production dependencies', '/tmp/npm-audit-production.json']
+          ]) {
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            } catch (error) {
+              console.log(`npm audit ${label}: report unavailable (${error.message})`);
+              continue;
+            }
+
+            console.log(`npm audit ${label} counts:`, JSON.stringify(report.metadata?.vulnerabilities ?? null));
+            for (const [name, finding] of Object.entries(report.vulnerabilities ?? {})) {
+              const via = (finding.via ?? []).map((item) =>
+                typeof item === 'string' ? item : `${item.name}: ${item.title ?? item.url ?? ''}`
+              );
+              console.log(
+                `${finding.severity} ${name}@${finding.range}; direct=${finding.isDirect}; fix=${JSON.stringify(finding.fixAvailable)}; via=${via.join(' | ')}`
+              );
+            }
+          }
+          NODE
       - name: Build, type-check and run unit tests
         run: npm run build
