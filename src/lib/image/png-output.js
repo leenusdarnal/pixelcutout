@@ -60,6 +60,7 @@ export async function encodeRgbaPng(rawImage, options = {}) {
       ? options.createCanvas(frame.width, frame.height)
       : new OffscreenCanvas(frame.width, frame.height);
 
+    /** @type {any} */
     const context = canvas?.getContext?.('2d');
     if (!context) {
       throw new Error('This browser cannot create the PNG preview. Try a recent version of Chrome, Edge, or Firefox.');
