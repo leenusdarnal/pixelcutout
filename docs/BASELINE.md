@@ -112,3 +112,19 @@ Measured from the production build for commit `80fda84fdbe6313a7e26329b88ad33e3b
 Compared with the pre-simplification route (56.18 kB raw / 20.09 kB gzip), the current route is 41.26 kB smaller raw (about **73.4% reduction**). CSS is 13.29 kB smaller raw (about **67.8% reduction**). The small file-header parser is dynamically imported only when a file is selected, preserving initial-route size.
 
 P2-01 accepts PNG, JPEG, and WebP up to 20 MB, 16 megapixels, and 10,000 pixels on either side. Its parser reads at most 2 MB from the beginning of the file to identify dimensions; it does not decode or allocate a full-resolution bitmap to perform the validation. The limits should be revisited only with representative memory tests on mobile devices.
+
+
+## Post lockfile repair and dependency security update
+
+Verified in GitHub Actions run [#100](https://github.com/leenusdarnal/pixelcutout/actions/runs/45015135360) for the dependency-repair branch on 2026-11-22.
+
+- Root cause of the broken CI was a truncated/corrupt tracked `package-lock.json` (approximately 1.5 kB, ending mid-entry and containing invalid UTF-8), not an npm configuration setting.
+- Regenerated npm lockfile v3: **176 package entries including the root**, **86,357 bytes**.
+- Clean CI install: **104 packages added** on the Ubuntu x64 runner.
+- Project tests: **34 passed, 0 failed**.
+- Svelte/TypeScript: **0 errors, 0 warnings**.
+- Vite production build: **passed** using Vite 6.4.6 and SvelteKit 2.70.4.
+- The audit changed from 4 findings (1 low, 1 moderate, 2 high) before the targeted updates to 2 findings (1 low, 1 high; no moderate or critical) after the `cookie@0.7.2` override and targeted framework/dev-tool upgrades.
+- The CI run regenerated the lockfile, installed that generated file, ran the audit, and built the application. The committed-lockfile-only verification is a separate final check after the temporary regeneration/export steps are removed.
+
+See `docs/DEPENDENCY_AUDIT.md` for package versions and the two conditional remaining findings. This dependency repair does not replace the pending mobile memory, live network privacy, representative-image output, or real-device QA checks in `docs/PROJECT_TRACKER.md`.
