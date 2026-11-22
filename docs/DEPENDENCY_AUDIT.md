@@ -53,13 +53,13 @@ The initial audit of the regenerated pre-upgrade dependency tree reported **4 fi
 | Vite high-severity advisory | No longer reported after Vite 6.4.6 | 6.4.6 | Targeted fix applied; the project dev command exposes the Vite dev server with `--host 0.0.0.0`, so keeping Vite patched is important. |
 | `cookie` low-severity advisory | No longer reported after resolving `cookie` to 0.7.2 | 0.7.0 or later | Addressed with the tested npm override. |
 | SvelteKit high-severity advisory, grouped through `@sveltejs/kit` | Still reported | `@sveltejs/kit` 3.4.0 (major upgrade) | Conditional residual risk; see below. |
-| Low-severity advisory grouped through `@sveltejs/adapter-static` via SvelteKit | Still reported | `@sveltejs/adapter-static` 4.0.1 (major upgrade) | Review before any adapter major migration; see below. |
+| Low-severity finding reported against `@sveltejs/adapter-static`, with SvelteKit in npm's `via` chain | Still reported | `@sveltejs/adapter-static` 4.0.1 (major upgrade) | Unresolved. Review the advisory and adapter v4 migration separately before changing the major version. |
 
 ### Conditional SvelteKit findings
 
 The high-severity SvelteKit advisory [GHSA-3r8g-jcqq-3p5j](https://github.com/sveltejs/kit/security/advisories/GHSA-3r8g-jcqq-3p5j) affects applications that enable the experimental remote-functions flag and use its `form`, `query`, or `command` remote APIs. The checked-in `svelte.config.js` configures the static adapter and fallback; it does not enable `experimental.remoteFunctions`. Do not enable that experimental feature without first upgrading to a patched SvelteKit release.
 
-The low-severity SvelteKit finding reported through the adapter is also conditional on enhanced form-action routing. The project is a static image-processing app and does not currently use server-side image processing or a server API. This does not erase the npm finding: it remains recorded until a compatible major-version upgrade or a complete advisory-specific mitigation is validated.
+npm still reports one low-severity finding against `@sveltejs/adapter-static`, with SvelteKit in its `via` chain, and recommends adapter-static 4.0.1. The CI audit output does not include a separate advisory title for this grouped finding, so it is recorded as unresolved rather than assumed to be inapplicable. Review the precise advisory and adapter v4 migration before changing the major version. The project currently builds as a static image-processing app and does not use backend image processing.
 
 npm reports SvelteKit 3.4.0 and adapter-static 4.0.1 as available fixes, both major upgrades. A broad major migration would also affect the framework/build toolchain and is not being mixed into this lightweight dependency repair. Reassess before introducing server endpoints, remote functions, enhanced form actions, or other affected features, and review the framework migration notes as a separate project task.
 
