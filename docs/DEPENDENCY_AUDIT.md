@@ -31,10 +31,13 @@ Direct dependency count: **4 runtime + 4 development**. The lockfile contains **
 The following local modules remain in the focused first-release path:
 
 - Manual colour removal: `src/lib/image/remove-color.js`.
+- Image header validation: `src/lib/image/image-dimensions.js` reads PNG/JPEG/WebP dimensions from a bounded header slice and is dynamically imported only after file selection; it adds no package dependency.
 - The background-removal worker: `src/lib/workers/remove-background.ts`.
 - Manual colour tests: `src/lib/image/remove-color.test.mjs`.
 
 The pre-simplification implementation also contained batch/ZIP modules, alpha-feather editing utilities, and a Studio editor component. These were removed when the app was narrowed to the agreed first-release scope; no separate ZIP, editor, state-management, or UI component package is needed.
+
+The header-validation helper is covered by `src/lib/image/image-dimensions.test.mjs` and enforces a 16-megapixel cap plus a 10,000-pixel maximum side before creating the preview URL.
 
 ## Scope and bundle observations
 

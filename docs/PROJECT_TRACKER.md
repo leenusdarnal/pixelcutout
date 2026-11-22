@@ -57,13 +57,13 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 | P1-02 | Keep AI removal as the primary action; start only on click | No model/runtime fetch or inference before click | Done | AI is the single primary action; manual colour removal is under Advanced. Worker creation starts from the removal action and Transformers.js is imported only in the AI worker path. |
 | P1-03 | Remove batch-processing UI from first-release path | No batch queue or ZIP workflow is exposed | Done | Removed `BatchProcessor`, ZIP writer, and ZIP-specific tests. |
 | P1-04 | Remove advanced Studio features not in first-release scope | No brush editor, crop, background replacement, shadows, or extra export formats in core flow | Done | Removed `StudioEditor`, brush/crop/background/shadow features, clipboard export, and unused alpha-feather utility/tests; retained before/after preview and PNG export. |
-| P1-05 | Add clear loading, success, empty, and error states | State transitions are understandable and recoverable | Done | Empty/upload, AI download/processing progress, cancel, result, and error states remain in the focused flow. CI verification pending for this commit. |
+| P1-05 | Add clear loading, success, empty, and error states | State transitions are understandable and recoverable | Done | Empty/upload, AI download/processing progress, cancel, result, and error states remain in the focused flow; verified by successful CI and production build. |
 
 ### Phase 2 — Image safety and resource lifecycle
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P2-01 | Validate file type, file size, decoded dimensions, and pixel count | Invalid/oversized files are rejected before heavy allocation | Open | |
+| P2-01 | Validate file type, file size, decoded dimensions, and pixel count | Invalid/oversized files are rejected before heavy allocation | Done | `image-dimensions.js` reads at most 2 MB of header data; supports PNG/JPEG/WebP; rejects over 16 MP or 10,000 px per side before preview/worker allocation. Eight focused tests; full suite passed in [CI run](https://github.com/leenusdarnal/pixelcutout/actions/runs/45002128282). |
 | P2-02 | Handle replacement while loading or processing | Previous work is cancelled/ignored safely; new image becomes current | Open | |
 | P2-03 | Add cancellation/reset path where feasible | User can recover from long processing without stale results | Open | |
 | P2-04 | Release object URLs, canvases, buffers, and worker resources | Repeated image replacements do not accumulate retained resources | Open | |

@@ -4,7 +4,7 @@ PixelCutout is a privacy-first, browser-based background remover. It processes o
 
 ## Core workflow
 
-1. Choose one PNG, JPG, or WebP image (up to 20 MB).
+1. Choose one PNG, JPG, or WebP image (up to 20 MB, 16 megapixels, and 10,000 pixels on either side).
 2. Click **Remove background** to start AI processing. The AI runtime and model are loaded only after this explicit action.
 3. Compare the original and cutout with the before/after slider.
 4. Download a full-resolution transparent PNG.
@@ -14,6 +14,7 @@ AI removal is the primary method. **Advanced: manual colour removal** is availab
 ## Privacy
 
 - Source image pixels remain in the browser and are passed to a local Web Worker for processing.
+- Image dimensions are read from a small file-header slice before the preview is created; images above the dimension or pixel limit are rejected before full-resolution processing.
 - AI mode downloads the model and runtime assets from public model hosts after the user starts removal. These are model files, not image uploads.
 - Manual colour removal does not load the AI runtime or download model files.
 - PixelCutout does not send image pixels to an application server, model host, analytics service, or cloud storage.

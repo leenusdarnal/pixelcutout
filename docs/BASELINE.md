@@ -95,3 +95,20 @@ Measured from Vercel's successful production build for commit `b1916db82ec7e46b7
 The app route and styling are substantially smaller after removing the Studio and batch-processing paths. The inference runtime assets remain large and are the next optimisation target; the worker is created only after a removal action, and the model itself remains a separate remote download. These emitted sizes do not establish exactly what is transferred during the initial browser navigation; confirm that through a network waterfall in Phase 2/6 browser QA.
 
 The latest cleaned build is deployed at [the production preview URL](https://pixelcutout-bv4zr4tzs-leenusdarnals-projects.vercel.app/) and returned HTTP 200. GitHub Actions run [#37](https://github.com/leenusdarnal/pixelcutout/actions/runs/45001772254) had not yet produced a job result at the time this note was written; Vercel's deployment build completed successfully.
+
+
+## Post P2-01 validation build
+
+Measured from the production build for commit `80fda84fdbe6313a7e26329b88ad33e3b22ee108` on 2026-11-22. GitHub Actions [run #39](https://github.com/leenusdarnal/pixelcutout/actions/runs/45002128282) passed: dependency installation, **15 unit tests**, Svelte/TypeScript (**0 errors, 0 warnings**), and the production build. The Vercel deployment for this commit returned HTTP 200.
+
+| Asset / role | Raw size | Gzip size | Loading note |
+|---|---:|---:|---|
+| Main page route JavaScript | 14.92 kB | 5.97 kB | Initial route |
+| Main CSS asset | 6.31 kB | 1.73 kB | Initial route |
+| Small async JS chunks | 2.56 kB + 2.03 kB | 1.21 kB + 1.16 kB | Header validator is dynamically imported only after a user selects a file |
+| Worker runtime chunk | 902.08 kB | — | Emitted worker asset |
+| ONNX Runtime WASM | 21,596.02 kB | 5,087.10 kB | Emitted worker asset; not in initial HTML modulepreload list |
+
+Compared with the pre-simplification route (56.18 kB raw / 20.09 kB gzip), the current route is 41.26 kB smaller raw (about **73.4% reduction**). CSS is 13.29 kB smaller raw (about **67.8% reduction**). The small file-header parser is dynamically imported only when a file is selected, preserving initial-route size.
+
+P2-01 accepts PNG, JPEG, and WebP up to 20 MB, 16 megapixels, and 10,000 pixels on either side. Its parser reads at most 2 MB from the beginning of the file to identify dimensions; it does not decode or allocate a full-resolution bitmap to perform the validation. The limits should be revisited only with representative memory tests on mobile devices.
