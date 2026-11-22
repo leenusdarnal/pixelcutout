@@ -1,4 +1,5 @@
 import { removeColorPixels } from '../image/remove-color.js';
+import { runWithWasmFallback } from './runtime-fallback.js';
 
 type TransformersModule = typeof import('@huggingface/transformers');
 
@@ -76,31 +77,34 @@ async function loadRemover(device: 'webgpu' | 'wasm') {
 }
 
 async function runRemoval(file: Blob) {
-  if (!remover) {
-    try {
-      await loadRemover('webgpu');
-    } catch {
-      await loadRemover('wasm');
-    }
+  // Once WASM is selected, keep using that session for later images.
+  if (remover && removerDevice === 'wasm') {
+    return remover(file);
   }
 
-  try {
-    return await remover(file);
-  } catch (error) {
-    // WebGPU can be present but still fail for a particular browser or driver.
-    if (removerDevice !== 'webgpu') throw error;
-
-    try {
-      await remover?.dispose?.();
-    } catch {
-      // Continue with a fresh WASM session.
+  return runWithWasmFallback({
+    runWebGpu: async () => {
+      if (!remover || removerDevice !== 'webgpu') {
+        await loadRemover('webgpu');
+      }
+      return remover(file);
+    },
+    onWebGpuFailure: async () => {
+      try {
+        await remover?.dispose?.();
+      } catch {
+        // If cleanup fails, do not reuse the uncertain session.
+      }
+      remover = null;
+      removerDevice = null;
+    },
+    runWasm: async () => {
+      if (!remover || removerDevice !== 'wasm') {
+        await loadRemover('wasm');
+      }
+      return remover(file);
     }
-
-    remover = null;
-    removerDevice = null;
-    await loadRemover('wasm');
-    return await remover(file);
-  }
+  });
 }
 
 async function toPngBlob(rawImage: any): Promise<Blob> {
