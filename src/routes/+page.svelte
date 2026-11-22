@@ -100,6 +100,15 @@
   busy = false;
   aiDownloadProgress = null;
   aiDownloadFile = '';
+
+  // Rebuild a discarded preview when returning to manual mode with an unapplied change.
+  if (
+   nextMode === 'manual' &&
+   manualColor &&
+   (!manualResult || manualAppliedKey !== [manualColor.r, manualColor.g, manualColor.b, tolerance].join(':'))
+  ) {
+   scheduleManualPreview();
+  }
  }
 
  function ensureWorker() {
