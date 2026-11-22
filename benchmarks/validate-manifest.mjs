@@ -8,9 +8,9 @@ import { readFile, stat } from 'node:fs/promises';
 import { basename, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const manifestPath = join(root, 'manifest.json');
-const imageRoot = resolve(root, 'images');
+const benchmarkDir = resolve(fileURLToPath(new URL('.', import.meta.url)));
+const manifestPath = join(benchmarkDir, 'manifest.json');
+const imageRoot = resolve(benchmarkDir, 'images');
 const expectedIds = Array.from({ length: 16 }, (_, index) => `B${String(index + 1).padStart(2, '0')}`);
 const required = ['filename', 'source', 'creator', 'license', 'sha256', 'width', 'height'];
 const errors = [];

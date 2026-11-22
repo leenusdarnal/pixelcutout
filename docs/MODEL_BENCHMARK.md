@@ -1,6 +1,6 @@
 # PixelCutout model benchmark protocol
 
-**Status:** Benchmark set defined; source images and hashes not yet collected.  
+**Status:** Benchmark protocol and metadata validator are in place; no local benchmark fixtures have been registered yet.  
 **Purpose:** Select the lightest model/runtime that meets PixelCutout's broad-subject and fine-edge quality requirements.  
 **Product constraint:** All image pixels stay local. Benchmark images are test fixtures only and must never be included in the deployed site.
 
@@ -68,7 +68,7 @@ Use the same device, browser version, test image, cache state, and input dimensi
 
 | Candidate / revision | Licence | Model bytes | Runtime bytes | Cold start | Warm median | Peak memory | WebGPU | WASM | Quality score | Notes |
 |---|---|---:|---:|---:|---:|---:|---|---|---:|---|
-| Current Xenova/modnet | Apache-2.0 (verify exact revision) | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | Portrait-focused baseline; do not assume broad-subject quality |
+| Xenova/modnet (`fa2fa546052fba4c08921230a26cc69a333fca12`, observed HEAD) | Apache-2.0 | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | Portrait-focused baseline; production revision is not pinned yet; see `MODEL_PROVENANCE.md` |
 | Candidate B | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | |
 | Candidate C | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | |
 
@@ -80,4 +80,4 @@ Use the same device, browser version, test image, cache state, and input dimensi
 4. Keep one production model/runtime path unless measured evidence supports a second path.
 5. Record the final decision and trade-offs in this file and update `docs/PROJECT_TRACKER.md`.
 
-**Current conclusion:** no replacement model has been selected. The current MODNet path remains the baseline until the 16-case set is populated and candidates are measured.
+**Current conclusion:** no replacement model has been selected. MODNet remains the production baseline. The Hugging Face Hub reported `fa2fa546052fba4c08921230a26cc69a333fca12` as the current repository revision when checked on 2026-11-22; PixelCutout does not yet pin that revision at runtime because the installed Transformers.js 4.3.2 has an upstream revision-propagation defect. See [`MODEL_PROVENANCE.md`](MODEL_PROVENANCE.md). The 16-case set must be populated and candidates measured before a model decision.

@@ -2,7 +2,7 @@
 
 > Living implementation tracker. Update this file as work is completed. Keep changes small, measurable, and aligned with the privacy-first, browser-only product.
 
-**Tracker version:** 1.1
+**Tracker version:** 1.2
 **Status:** Implementation in progress
 **Last updated:** 2026-11-22
 **Product:** PixelCutout — one-image-at-a-time background removal
@@ -20,7 +20,7 @@
 
 ## 2. Lightweight guardrails
 
-- [x] Keep the SvelteKit + Svelte + TypeScript stack lightweight. The SvelteKit 3 and adapter-static 4 upgrade is isolated in a maintenance branch with no feature/model scope.
+- [x] Keep the SvelteKit + Svelte + TypeScript stack lightweight. The SvelteKit 3 and adapter-static 4 upgrade is merged to main with no feature/model scope.
 - [ ] Prefer existing utilities and browser APIs over new dependencies.
 - [ ] Add a dependency only when a measured requirement cannot be met with the current stack; record its size and rationale.
 - [ ] Load the AI runtime and model only after the user clicks **Remove Background**; never preload them on initial page load.
@@ -41,8 +41,8 @@
 - [x] Replace the $lib alias with the #lib Node subpath import and migrate service-worker APIs.
 - [x] Keep static deployment, worker-based processing, lazy AI runtime loading, and the existing image privacy boundary unchanged.
 - [x] Verify clean npm ci, 34 tests, 0 Svelte/TypeScript errors or warnings, static production build, and zero findings in both npm audits.
-- [x] Verify pull-request CI and successful Vercel preview deployment status (PR #26, GitHub Actions run #120; Vercel deployment READY).
-- [ ] Complete browser network privacy inspection and desktop/mobile workflows with authorized access to the protected preview.
+- [x] Verify pull-request CI and successful Vercel preview deployment status (PR #26, GitHub Actions run #122; Vercel deployment READY).
+- [ ] Complete browser network privacy inspection and desktop/mobile workflows with authorized access to the protected preview; migration is merged.
 ## 3. Status legend
 
 Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Add owner, date, PR/commit, and evidence when useful. Do not mark a task Done without its acceptance check.
@@ -82,12 +82,13 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P3-01 | Define a small representative benchmark set | Includes people/hair, pets/fur, products, everyday objects, fine edges, and difficult backgrounds | In progress | The 16-case matrix and scoring protocol are defined in `docs/MODEL_BENCHMARK.md`. The actual locally sourced image files, usage rights, and SHA-256 manifest still need to be populated before model comparisons. |
+| P3-01 | Define a small representative benchmark set | Includes people/hair, pets/fur, products, everyday objects, fine edges, and difficult backgrounds | In progress | The 16-case matrix, scoring protocol, `benchmarks/manifest.json`, and local SHA-256 validator are defined. The manifest is intentionally empty until licensed local fixture images and hashes are supplied. |
 | P3-02 | Benchmark current model against viable general-purpose alternatives | Quality, model size, cold-start, inference time, memory, WebGPU/WASM, and licensing recorded | Open | |
 | P3-03 | Select the smallest model that meets quality targets | Decision includes measured trade-offs; no redundant model shipped | Open | |
 | P3-04 | Keep inference off the main thread | UI remains responsive during inference on supported devices | Done | AI and manual processing run in `src/lib/workers/remove-background.ts` via a module Web Worker; the worker is created only after the user starts removal. CI build and checks passed in [run #54](https://github.com/leenusdarnal/pixelcutout/actions/runs/45003620067). Real-device responsiveness checks remain in P6-02. |
 | P3-05 | Add graceful WebGPU/WASM/runtime failure handling | Unsupported or failed runtime produces a recoverable message | Done | Added tested WebGPU-to-WASM fallback for initialization and inference failures; failed WebGPU sessions are disposed before switching, WASM is reused for later images, and WASM errors propagate to the UI's recoverable error state. Five focused fallback tests; full CI passed with 22 tests, 0 type errors/warnings, and a successful production build in [run #54](https://github.com/leenusdarnal/pixelcutout/actions/runs/45003620067). |
-| P3-06 | Document model source, license, version, and update procedure | Model provenance and update path are recorded | Open | |
+| P3-06 | Document model source, license, version, and update procedure | Model provenance and update path are recorded; runtime revision is safely reproducible | In progress | Added `docs/MODEL_PROVENANCE.md` with model ID, observed Hub commit SHA, Apache-2.0 metadata, file variants, runtime version, and update steps. Runtime pinning is deferred: Transformers.js 4.3.2 does not consistently propagate `revision` to pipeline file discovery/progress metadata (upstream issue [#1893](https://github.com/huggingface/transformers.js/issues/1893)); related fix PR [#1942](https://github.com/huggingface/transformers.js/pull/1942) is closed unmerged. Do not claim the runtime is pinned until a released fix is verified. |
+| P3-07 | Validate benchmark manifest paths, metadata, and image hashes in CI | CI finds the manifest and checks local fixture metadata/hashes without committing images | Done | Fixed validator path resolution so it reads `benchmarks/manifest.json` and `benchmarks/images/`; added `npm run benchmark:validate`, regression tests for normal and `--require-complete` operation, and CI execution. GitHub Actions [run #131](https://github.com/leenusdarnal/pixelcutout/actions/runs/45052492932) passed: validator, production dependency audit, unit tests, Svelte checks, and Vite production build. No dependency or image binary added. |
 
 ### Phase 4 — Result and export
 
@@ -149,6 +150,7 @@ Record each candidate with the same image set and device/runtime conditions.
 | Risk | Mitigation | Status |
 |---|---|---|
 | Portrait model performs poorly on non-human subjects | Benchmark general-purpose models before locking production model | Open |
+| Transformers.js 4.3.2 does not fully honour pinned Hub revisions during model file discovery | Keep revision pinning disabled until a released runtime fix is verified against network requests for config, weights, and progress metadata | In progress |
 | Large images exhaust mobile memory | Validate decoded dimensions/pixels; process with bounded buffers; test mobile | Open |
 | WebGPU unavailable or unstable | Keep tested WASM fallback and explain slower processing | Open |
 | Model download makes first use feel slow | Lazy-load only after click; show progress; cache model assets appropriately | Open |
@@ -179,7 +181,9 @@ Record each candidate with the same image set and device/runtime conditions.
 | 2026-11-22 | Explicit user click starts inference | Avoid unexpected CPU/GPU work and model downloads |
 | 2026-11-22 | Before/after comparison and transparent PNG are the core result | Minimal, useful output flow |
 | 2026-11-22 | Benchmark model options before changing the current model | Quality and bundle/runtime trade-offs need evidence |
-| 2026-11-22 | Implement SvelteKit 3.4.0 and adapter-static 4.0.1 on an isolated maintenance branch | Preserve static hosting and browser-only processing; full npm audit is clean. PR #26 CI run #120 passed and Vercel preview is READY; protected-preview browser privacy and device checks remain before merge |
+| 2026-11-22 | Keep model provenance separate from model selection | Record Xenova/modnet Apache-2.0 metadata and observed commit SHA; defer runtime pin until Transformers.js revision propagation is fixed and verified |
+| 2026-11-22 | Validate benchmark metadata in CI but keep source images local | Hashes and file paths are checked without committing fixture binaries or adding dependencies |
+| 2026-11-22 | Implement SvelteKit 3.4.0 and adapter-static 4.0.1 on an isolated maintenance branch | Preserve static hosting and browser-only processing; full npm audit is clean. PR #26 merged to main at c294b979; CI and Vercel preview passed. Protected-preview browser privacy and device checks remain open after merge |
 
 ## 10. Deferred / out of scope for first release
 

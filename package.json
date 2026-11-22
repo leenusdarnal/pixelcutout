@@ -8,7 +8,8 @@
     "build": "npm run test && npm run check && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test": "node --test"
+    "test": "node --test",
+    "benchmark:validate": "node benchmarks/validate-manifest.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.2",

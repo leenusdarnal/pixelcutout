@@ -7,7 +7,7 @@ This manifest tracks the local image fixtures described in [MODEL_BENCHMARK.md](
 1. Obtain an image you own or whose licence explicitly permits the intended evaluation and potential commercial product research. Record the exact source, creator, and licence/attribution requirements.
 2. Put the image in `benchmarks/images/` using a simple filename. This directory is git-ignored.
 3. Add one object to `manifest.json` with the matching case ID, filename, source, creator, licence, SHA-256 digest, and pixel dimensions.
-4. Run `node benchmarks/validate-manifest.mjs`. When all 16 cases are populated, run `node benchmarks/validate-manifest.mjs --require-complete`.
+4. Run `npm run benchmark:validate`. When all 16 cases are populated, run `npm run benchmark:validate -- --require-complete`.
 
 Example entry:
 
