@@ -64,8 +64,8 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
 | P2-01 | Validate file type, file size, decoded dimensions, and pixel count | Invalid/oversized files are rejected before heavy allocation | Done | `image-dimensions.js` reads at most 2 MB of header data; supports PNG/JPEG/WebP; rejects over 16 MP or 10,000 px per side before preview/worker allocation. Eight focused tests; full suite passed in [CI run](https://github.com/leenusdarnal/pixelcutout/actions/runs/45002128282). |
-| P2-02 | Handle replacement while loading or processing | Previous work is cancelled/ignored safely; new image becomes current | Open | |
-| P2-03 | Add cancellation/reset path where feasible | User can recover from long processing without stale results | Open | |
+| P2-02 | Handle replacement while loading or processing | Previous work is cancelled/ignored safely; new image becomes current | Done | Selection request tokens discard stale header-validation results; replacing/resetting terminates the previous worker, and worker identity checks ignore queued events from a superseded worker. Verified by [CI run](https://github.com/leenusdarnal/pixelcutout/actions/runs/45002294789); manual device QA remains in P6-02. |
+| P2-03 | Add cancellation/reset path where feasible | User can recover from long processing without stale results | Done | Cancel terminates the active worker and clears progress; a later attempt creates a fresh worker. Worker identity checks prevent cancelled work from updating the current UI. Verified by [CI run](https://github.com/leenusdarnal/pixelcutout/actions/runs/45002294789). |
 | P2-04 | Release object URLs, canvases, buffers, and worker resources | Repeated image replacements do not accumulate retained resources | Open | |
 | P2-05 | Keep image data out of server requests, logs, analytics, and persistence | Network inspection confirms no image-pixel upload or storage | Open | |
 
