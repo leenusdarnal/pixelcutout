@@ -60,4 +60,4 @@ The ONNX Runtime Node package has a post-install step that may attempt to downlo
 
 ## Project tracking
 
-The implementation plan and acceptance checks are maintained in [docs/PROJECT_TRACKER.md](docs/PROJECT_TRACKER.md). See [docs/BASELINE.md](docs/BASELINE.md) and [docs/DEPENDENCY_AUDIT.md](docs/DEPENDENCY_AUDIT.md) for the measured pre-simplification baseline and dependency inventory.
+The implementation plan and acceptance checks are maintained in [docs/PROJECT_TRACKER.md](docs/PROJECT_TRACKER.md). The proposed SvelteKit major upgrade is documented in [docs/SVELTEKIT_MIGRATION_PLAN.md](docs/SVELTEKIT_MIGRATION_PLAN.md); it has not been executed. See [docs/BASELINE.md](docs/BASELINE.md) and [docs/DEPENDENCY_AUDIT.md](docs/DEPENDENCY_AUDIT.md) for the measured pre-simplification baseline and dependency inventory.
