@@ -84,8 +84,8 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P4-01 | Build accessible before/after comparison | Slider works with pointer, touch, and keyboard; labels are clear | Open | |
-| P4-02 | Show transparency with a lightweight checkerboard | Transparent areas are distinguishable without obscuring edges | Open | |
+| P4-01 | Build accessible before/after comparison | Slider works with pointer, touch, and keyboard; labels are clear | Done | Full-preview native range control with keyboard support, touch/pointer hit area, visible divider/handle, clear Original/Background removed labels, and live `aria-valuetext`. Verified in production build: 22/22 tests pass, Svelte check 0 errors/0 warnings, Vite build succeeds; deployment [READY](https://vercel.com/leenusdarnals-projects/pixelcutout/Hs819iGv9ZwtocsdC6WUxCEeaRwB) for commit `110ffb7939c2294c2db6a3f72482db8a99069cde`. Real-device interaction QA remains P6-02. |
+| P4-02 | Show transparency with a lightweight checkerboard | Transparent areas are distinguishable without obscuring edges | Done | Default `checker` preview mode uses CSS-only checkerboard; Light and Dark preview backgrounds remain available. No dependency or image asset added. Verified in `src/routes/+page.svelte`; real-device visual QA remains P6-02. |
 | P4-03 | Export a full-resolution transparent PNG | Alpha channel and original dimensions are preserved | Open | |
 | P4-04 | Add Try another / reset flow | New image starts cleanly and prior resources are released | Open | |
 
