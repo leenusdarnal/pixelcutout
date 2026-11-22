@@ -20,7 +20,7 @@
 
 ## 2. Lightweight guardrails
 
-- [ ] Keep the existing SvelteKit + Svelte + TypeScript stack; do not introduce a framework migration.
+- [ ] Keep the existing SvelteKit + Svelte + TypeScript stack lightweight. A SvelteKit major upgrade is now planned as a separate, gated maintenance migration; do not mix it with product-feature work.
 - [ ] Prefer existing utilities and browser APIs over new dependencies.
 - [ ] Add a dependency only when a measured requirement cannot be met with the current stack; record its size and rationale.
 - [ ] Load the AI runtime and model only after the user clicks **Remove Background**; never preload them on initial page load.
@@ -170,6 +170,7 @@ Record each candidate with the same image set and device/runtime conditions.
 | 2026-11-22 | Explicit user click starts inference | Avoid unexpected CPU/GPU work and model downloads |
 | 2026-11-22 | Before/after comparison and transparent PNG are the core result | Minimal, useful output flow |
 | 2026-11-22 | Benchmark model options before changing the current model | Quality and bundle/runtime trade-offs need evidence |
+| 2026-11-22 | Plan a separate SvelteKit major migration; do not combine it with product changes | Resolve documented development-tool advisories through a reviewed, tested framework/toolchain upgrade while preserving static hosting and browser-only processing |
 
 ## 10. Deferred / out of scope for first release
 
@@ -178,7 +179,7 @@ Record each candidate with the same image set and device/runtime conditions.
 - Brush editing, crop, background replacement, shadows, multi-format export.
 - Multiple production models without benchmark justification.
 - Analytics or telemetry that could collect image data.
-- Major framework or dependency upgrades unrelated to the product requirements.
+- Unrelated framework upgrades and feature work during the separately tracked SvelteKit major migration.
 
 ---
 
