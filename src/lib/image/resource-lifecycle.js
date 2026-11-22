@@ -24,7 +24,10 @@ export function releaseImageResources({
   }
 
   /** @type {Set<string>} */
-  const uniqueUrls = new Set(objectUrls.filter((url) => typeof url === 'string' && url.length > 0));
+  const uniqueUrls = new Set();
+  for (const url of objectUrls) {
+    if (typeof url === 'string' && url.length > 0) uniqueUrls.add(url);
+  }
   let revokedUrls = 0;
 
   for (const url of uniqueUrls) {
