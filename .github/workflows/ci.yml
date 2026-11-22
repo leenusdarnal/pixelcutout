@@ -61,5 +61,7 @@ jobs:
             );
           }
           NODE
+      - name: Validate benchmark manifest
+        run: npm run benchmark:validate
       - name: Build, type-check and run unit tests
         run: npm run build
