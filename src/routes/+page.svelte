@@ -20,9 +20,14 @@
  let manualResult = $state('');
  let manualPreview = $state('');
  let manualAppliedKey = $state('');
+ let dragActive = $state(false);
+
  let displayCutout = $derived(removalMode === 'manual' ? (manualPreview || manualResult) : cutout);
  let manualCurrentKey = $derived(manualColor ? [manualColor.r, manualColor.g, manualColor.b, tolerance].join(':') : '');
- let canDownload = $derived(removalMode === 'manual' ? Boolean(manualResult && manualAppliedKey && manualAppliedKey === manualCurrentKey) : Boolean(cutout));
+ let canDownload = $derived(removalMode === 'manual'
+  ? Boolean(manualResult && manualAppliedKey && manualAppliedKey === manualCurrentKey)
+  : Boolean(cutout));
+
  let aiDownloadProgress = $state<number | null>(null);
  let aiDownloadFile = $state('');
  let aiStage = $state<'loading' | 'processing'>('loading');
@@ -38,8 +43,9 @@
  async function selectImage(nextFile?: File) {
   if (!nextFile) return;
   const request = ++selectionRequest;
+  error = '';
+  dragActive = false;
 
-  // Clear the picker so the same file can be selected again after Start over.
   if (picker) picker.value = '';
 
   if (!['image/png', 'image/jpeg', 'image/webp'].includes(nextFile.type)) {
@@ -51,7 +57,6 @@
    return;
   }
 
-  // Read only the image header; do not decode a full-size bitmap to check its dimensions.
   try {
    const { readImageDimensions, validateImageDimensions } = await import('#lib/image/image-dimensions.js');
    const dimensions = await readImageDimensions(nextFile);
@@ -64,7 +69,6 @@
    return;
   }
 
-  // Ignore slow validation results when the user has already selected another file or reset.
   if (request !== selectionRequest) return;
 
   previewRequest += 1;
@@ -80,16 +84,16 @@
   manualResult = '';
   manualPreview = '';
   manualAppliedKey = '';
-  error = '';
   busy = false;
   aiDownloadProgress = null;
   aiDownloadFile = '';
+  manualColor = null;
+  removalMode = 'ai';
  }
 
  function setRemovalMode(nextMode: RemovalMode) {
   if (removalMode === nextMode) return;
 
-  // Stop any active job and release only the transient preview. Keep committed AI/manual results.
   previewRequest += 1;
   if (previewTimer) clearTimeout(previewTimer);
   previewTimer = undefined;
@@ -102,7 +106,6 @@
   aiDownloadProgress = null;
   aiDownloadFile = '';
 
-  // Rebuild a discarded preview when returning to manual mode with an unapplied change.
   if (
    nextMode === 'manual' &&
    manualColor &&
@@ -118,7 +121,6 @@
   const activeWorker = new Worker(new URL('../lib/workers/remove-background.ts', import.meta.url), { type: 'module' });
   worker = activeWorker;
   activeWorker.onmessage = (event: MessageEvent) => {
-   // Ignore queued events from a worker that was replaced, cancelled, or terminated.
    if (worker !== activeWorker) return;
 
    if (event.data?.type === 'download-progress') {
@@ -196,7 +198,7 @@
   busy = false;
   aiDownloadProgress = null;
   aiDownloadFile = '';
-  error = 'Processing cancelled.';
+  error = 'Processing cancelled. You can start again whenever you are ready.';
  }
 
  async function loadManualSourceImage(): Promise<HTMLImageElement> {
@@ -334,9 +336,34 @@
   });
  }
 
+ function dragEnter(event: DragEvent) {
+  event.preventDefault();
+  dragActive = true;
+ }
+
+ function dragOver(event: DragEvent) {
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  dragActive = true;
+ }
+
+ function dragLeave(event: DragEvent) {
+  event.preventDefault();
+  const nextTarget = event.relatedTarget;
+  if (nextTarget instanceof Node && (event.currentTarget as HTMLElement).contains(nextTarget)) return;
+  dragActive = false;
+ }
+
  function drop(event: DragEvent) {
   event.preventDefault();
-  selectImage(event.dataTransfer?.files?.[0]);
+  dragActive = false;
+  const droppedFiles = event.dataTransfer?.files;
+  if (!droppedFiles?.length) return;
+  if (droppedFiles.length > 1) {
+   error = 'PixelCutout works with one image at a time. Please drop a single image.';
+   return;
+  }
+  selectImage(droppedFiles[0]);
  }
 
  function paste(event: ClipboardEvent) {
@@ -350,7 +377,9 @@
   const anchor = document.createElement('a');
   anchor.href = result;
   anchor.download = 'pixelcutout.png';
+  document.body.append(anchor);
   anchor.click();
+  anchor.remove();
  }
 
  function reset() {
@@ -372,6 +401,7 @@
   busy = false;
   aiDownloadProgress = null;
   aiDownloadFile = '';
+  dragActive = false;
   if (picker) picker.value = '';
  }
 
@@ -388,216 +418,694 @@
 
 <svelte:window onpaste={paste}/>
 
-<div class="shell">
- <header>
-  <a href="/" class="brand"><b>P</b> PixelCutout</a>
-  <span>● ON-DEVICE PROCESSING</span>
+<div class="app-shell">
+ <header class="topbar">
+  <div class="topbar-inner">
+   <a href="/" class="brand" aria-label="PixelCutout home">
+    <span class="brand-mark" aria-hidden="true">P</span>
+    <span>PixelCutout</span>
+   </a>
+   <div class="privacy-pill">
+    <span class="privacy-dot" aria-hidden="true"></span>
+    Images stay on your device
+   </div>
+  </div>
  </header>
- <main>
+
+ <main class="page">
   <section class="hero">
-   <small>PRIVATE BY DESIGN · ONE IMAGE AT A TIME</small>
-   <h1>Make your subject<br/><i>stand out.</i></h1>
-   <p>Remove backgrounds automatically with AI, or use manual colour removal for simple backgrounds.</p>
+   <span class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> Private background removal</span>
+   <h1>Keep the subject.<br/><span>Lose the background.</span></h1>
+   <p>Remove backgrounds with AI in your browser. Your original image never leaves this device.</p>
   </section>
 
-  
-
   {#if !original}
-   <section class="drop" aria-label="Image upload drop zone" ondragover={(event) => event.preventDefault()} ondrop={drop}>
-    <div class="upload">↑</div>
-    <h2>Drop an image here</h2>
-    <p>or choose a file from your device</p>
-    <button class="primary" onclick={() => picker?.click()}>Select image</button>
-    <input bind:this={picker} type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={(event) => selectImage(event.currentTarget.files?.[0])}/>
-    <small>PNG · JPG · WEBP · Paste with Ctrl/Cmd + V</small>
-    <small class="hint">Maximum image size: 20 MB</small>
+   <section
+    class="upload-card"
+    class:drag-active={dragActive}
+    aria-labelledby="upload-title"
+    aria-describedby="upload-help"
+    ondragenter={dragEnter}
+    ondragover={dragOver}
+    ondragleave={dragLeave}
+    ondrop={drop}
+   >
+    <div class="upload-illustration" aria-hidden="true">
+     <svg viewBox="0 0 48 48" fill="none">
+      <path d="M24 31V10m0 0-8 8m8-8 8 8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 29v7a3 3 0 0 0 3 3h22a3 3 0 0 0 3-3v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+     </svg>
+    </div>
+    <h2 id="upload-title">Drop an image here</h2>
+    <p class="upload-subtitle">or choose a file from your device</p>
+    <button class="primary-button" type="button" onclick={() => picker?.click()}>
+     Choose an image
+     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <input
+     bind:this={picker}
+     type="file"
+     accept="image/png,image/jpeg,image/webp"
+     aria-label="Choose a PNG, JPG, or WebP image"
+     hidden
+     onchange={(event) => selectImage(event.currentTarget.files?.[0])}
+    />
+    <div class="file-specs" aria-label="Supported formats and file limit">
+     <span>PNG</span><span>JPG</span><span>WEBP</span><i aria-hidden="true"></i><span>Up to 20 MB</span>
+    </div>
+    <p id="upload-help" class="upload-help">You can also paste an image with Ctrl/Cmd + V. One image at a time.</p>
    </section>
   {:else}
-   <section class="editor">
-    <div class="bar">
-     <span>{file?.name}</span>
-     <button class="link" onclick={reset}>{displayCutout || cutout ? 'Try another image' : 'Start over'}</button>
-    </div>
-    <div class="preview {mode}">
-     {#if displayCutout}
-      <img id="cutout-preview" class="cut" src={displayCutout} alt="Result with the background removed"/>
-      <div class="before" style="clip-path:inset(0 {100 - Number(split)}% 0 0)">
-       <img id="original-preview" src={original} alt="Original"/>
+   <section class="workspace" aria-label="Background removal workspace">
+    <div class="canvas-panel">
+     <div class="canvas-heading">
+      <div class="file-summary">
+       <span class="file-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/><path d="m6 17 4.2-4.2a1.2 1.2 0 0 1 1.7 0L14 15l1.6-1.6a1.2 1.2 0 0 1 1.7 0L19 15.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+       </span>
+       <span class="file-text">
+        <strong title={file?.name}>{file?.name}</strong>
+        <small>{file?.type.replace('image/', '').toUpperCase()} image · On this device</small>
+       </span>
       </div>
-      <span class="comparison-label original-label" aria-hidden="true">Original</span>
-      <span class="comparison-label result-label" aria-hidden="true">{removalMode === 'manual' && manualPreview ? 'Manual preview · reduced size' : 'Background removed'}</span>
-      <div class="comparison-divider" style="left: {split}%" aria-hidden="true">
-       <span class="comparison-handle">↔</span>
-      </div>
-      <input
-       class="range"
-       type="range"
-       min="0"
-       max="100"
-       step="1"
-       bind:value={split}
-       aria-label="Before and after comparison"
-       aria-valuetext={`Original ${Number(split)}%, background removed ${100 - Number(split)}%`}
-       aria-controls="original-preview cutout-preview"
-      />
-     {:else if removalMode === 'manual'}
-      <button type="button" class="sampler" onclick={(event) => pickBackgroundColor(event)} aria-label="Sample background colour; keyboard activation samples the image centre">
-       <img src={original} alt="" aria-hidden="true"/>
-      </button>
-     {:else}
-      <img src={original} alt="Selected"/>
-     {/if}
-     {#if busy}
-      <div class="busy" aria-live="polite">
-       <div class="spinner"></div>
-       {#if removalMode === 'ai' && aiDownloadProgress !== null}
-        <b>Downloading AI model · {aiDownloadProgress}%</b>
-        <div class="progress-track" role="progressbar" aria-label="Current AI model file download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={aiDownloadProgress}>
-         <span style="width: {aiDownloadProgress}%"></span>
-        </div>
-        <small>Downloading {aiDownloadFile || 'model asset'} from its public host. Your photo is not uploaded.</small>
-       {:else if removalMode === 'ai'}
-        <b>{aiStage === 'processing' ? 'Removing background…' : 'Loading AI model…'}</b>
-        <small>{aiStage === 'processing' ? 'The AI is processing your image on this device.' : 'Checking the model cache and preparing the AI engine.'}</small>
-       {:else}
-        <b>Removing selected colour…</b>
-        <small>Processing the image on this device without an AI model.</small>
-       {/if}
-       <button class="link" onclick={cancelProcessing}>Cancel</button>
-      </div>
-     {/if}
-    </div>
+      <button class="secondary-button" type="button" onclick={reset}>Replace image</button>
+     </div>
 
-
-    {#if !busy}
-     <div class="tool-panel">
-      {#if removalMode === 'ai'}
-       <button class="primary" onclick={removeWithAi}>Remove background</button>
-       <p>AI removal runs locally. The model downloads only after you start removal.</p>
+     <div
+      class="preview-stage"
+      class:checker={mode === 'checker'}
+      class:light={mode === 'light'}
+      class:dark={mode === 'dark'}
+      class:processing={busy}
+     >
+      {#if displayCutout}
+       <img id="cutout-preview" class="preview-image" src={displayCutout} alt="Background-removed result on the selected preview background"/>
+       <div class="before" style="clip-path:inset(0 {100 - Number(split)}% 0 0)">
+        <img id="original-preview" class="preview-image" src={original} alt="Original image"/>
+       </div>
+       <span class="comparison-label original-label" aria-hidden="true">Original</span>
+       <span class="comparison-label result-label" aria-hidden="true">
+        {removalMode === 'manual' && manualPreview ? 'Manual preview' : 'Background removed'}
+       </span>
+       <div class="comparison-divider" style="left: {split}%" aria-hidden="true">
+        <span class="comparison-handle">↔</span>
+       </div>
+       <input
+        class="comparison-range"
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        bind:value={split}
+        aria-label="Before and after comparison"
+        aria-valuetext={'Original ' + Number(split) + '%, background removed ' + (100 - Number(split)) + '%'}
+        aria-controls="original-preview cutout-preview"
+       />
+      {:else if removalMode === 'manual'}
+       <button
+        type="button"
+        class="sampler"
+        onclick={(event) => pickBackgroundColor(event)}
+        aria-label="Sample a background colour from the image. Keyboard activation samples the centre."
+       >
+        <img class="preview-image" src={original} alt="Selected image for background colour sampling"/>
+       </button>
       {:else}
-       <p class="tool-instruction">Click a background area to sample its colour. Keyboard activation samples the image centre.</p>
+       <img class="preview-image" src={original} alt="Selected original image"/>
+      {/if}
+
+      {#if busy}
+       <div class="processing-overlay" role="status" aria-live="polite" aria-atomic="true">
+        <div class="spinner" aria-hidden="true"></div>
+        {#if removalMode === 'ai' && aiDownloadProgress !== null}
+         <strong>Downloading AI model · {aiDownloadProgress}%</strong>
+         <div class="progress-track" role="progressbar" aria-label="AI model file download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={aiDownloadProgress}>
+          <span style="width: {aiDownloadProgress}%"></span>
+         </div>
+         <p>Downloading {aiDownloadFile || 'model assets'} from its public host. Your photo is not uploaded.</p>
+        {:else if removalMode === 'ai'}
+         <strong>{aiStage === 'processing' ? 'Removing the background…' : 'Preparing the AI model…'}</strong>
+         <p>{aiStage === 'processing' ? 'Your image is being processed on this device.' : 'The model is loaded only after you start removal.'}</p>
+        {:else}
+         <strong>Removing the selected colour…</strong>
+         <p>Processing the original image on this device.</p>
+        {/if}
+        <button class="overlay-action" type="button" onclick={cancelProcessing}>Cancel</button>
+       </div>
+      {/if}
+     </div>
+
+     <div class="canvas-toolbar">
+      <div class="toolbar-label">
+       <strong>Preview background</strong>
+       {#if displayCutout}
+        <span class="result-chip">
+         <span class="result-dot" aria-hidden="true"></span>
+         {removalMode === 'manual' && manualPreview && !manualResult ? 'Preview only' : 'Result ready'}
+        </span>
+       {/if}
+      </div>
+      <div class="segmented-control" role="group" aria-label="Preview background colour">
+       <button type="button" class:active={mode === 'checker'} aria-pressed={mode === 'checker'} onclick={() => mode = 'checker'}>Checker</button>
+       <button type="button" class:active={mode === 'light'} aria-pressed={mode === 'light'} onclick={() => mode = 'light'}>Light</button>
+       <button type="button" class:active={mode === 'dark'} aria-pressed={mode === 'dark'} onclick={() => mode = 'dark'}>Dark</button>
+      </div>
+     </div>
+    </div>
+
+    <aside class="control-panel" aria-label="Background removal controls">
+     {#if busy}
+      <section class="control-card working-card">
+       <span class="control-kicker">IN PROGRESS</span>
+       <h2>Working on your image</h2>
+       <p>Keep this tab open while PixelCutout finishes processing. Your image remains on this device.</p>
+      </section>
+     {:else if removalMode === 'ai'}
+      <section class="control-card">
+       <span class="control-kicker">RECOMMENDED</span>
+       <h2>Automatic AI removal</h2>
+       <p>Start with AI for people, pets, products and everyday objects.</p>
+       <button class="primary-button full-width" type="button" onclick={removeWithAi}>
+        Remove background
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+       </button>
+       <p class="action-note">The model downloads only after you start. Image pixels stay local.</p>
+      </section>
+      <div class="secondary-tool">
+       <span>For a plain, evenly coloured background</span>
+       <button class="text-action" type="button" onclick={() => setRemovalMode('manual')}>Use manual colour removal <span aria-hidden="true">→</span></button>
+      </div>
+     {:else}
+      <section class="control-card manual-card">
+       <span class="control-kicker">ADVANCED TOOL</span>
+       <h2>Manual colour removal</h2>
+       <p>Best for simple backgrounds with one fairly consistent colour.</p>
        {#if manualColor}
         <div class="sample-row">
-         <span class="swatch" style="background: rgb({manualColor.r}, {manualColor.g}, {manualColor.b})"></span>
-         <span>Selected colour: RGB {manualColor.r}, {manualColor.g}, {manualColor.b}</span>
-         <button class="link" onclick={chooseManualColorAgain}>Choose again</button>
+         <span class="swatch" style="background: rgb({manualColor.r}, {manualColor.g}, {manualColor.b})" aria-hidden="true"></span>
+         <div class="sample-copy">
+          <strong>Selected background colour</strong>
+          <span>RGB {manualColor.r}, {manualColor.g}, {manualColor.b}</span>
+         </div>
+         <button class="text-action compact" type="button" onclick={chooseManualColorAgain}>Choose again</button>
         </div>
         <label class="tolerance-label" for="tolerance">
          <span>Colour tolerance</span>
          <strong>{tolerance}</strong>
         </label>
-        <input id="tolerance" class="tolerance" type="range" min="10" max="150" step="1" value={tolerance} oninput={(event) => { tolerance = Number(event.currentTarget.value); scheduleManualPreview(); }}/>
-        <small class="helper">Increase tolerance to remove more shades of the selected colour. Matching colours inside the subject may also become transparent.</small>
-        <small class="helper">Preview is reduced to 512 pixels on the longest side. Click Remove selected colour to apply it at full resolution.</small>
-        <button class="primary" onclick={removeWithoutAi}>Remove selected colour</button>
+        <input
+         id="tolerance"
+         class="tolerance"
+         type="range"
+         min="10"
+         max="150"
+         step="1"
+         value={tolerance}
+         oninput={(event) => { tolerance = Number(event.currentTarget.value); scheduleManualPreview(); }}
+        />
+        <p class="helper">Higher tolerance removes a wider range of similar shades. Matching colours inside the subject may also become transparent.</p>
+        <p class="helper">The preview is reduced to 512 px on the longest side. Applying it uses the full-resolution original.</p>
+        <button class="primary-button full-width" type="button" onclick={removeWithoutAi}>Apply at full resolution</button>
        {:else}
-        <small class="helper">Manual colour removal works best when the background has a fairly uniform colour.</small>
+        <div class="sample-instruction">
+         <span class="sample-number">1</span>
+         <p>Click a background area in the image to sample its colour. Keyboard activation samples the centre.</p>
+        </div>
+        <p class="helper">The image preview is ready for colour sampling.</p>
        {/if}
-      {/if}
-      <button
-       class="link advanced-toggle"
-       aria-expanded={removalMode === 'manual'}
-       onclick={() => setRemovalMode(removalMode === 'ai' ? 'manual' : 'ai')}
-      >
-       {removalMode === 'manual' ? 'Use AI removal instead' : 'Advanced: manual colour removal'}
-      </button>
-     </div>
-    {/if}
+      </section>
+      <button class="text-action back-action" type="button" onclick={() => setRemovalMode('ai')}>← Back to AI removal</button>
+     {/if}
 
-    <div class="bar">
-     <span>Preview background</span>
-     <div class="modes">
-      <button class:active={mode === 'checker'} onclick={() => mode = 'checker'}>Grid</button>
-      <button class:active={mode === 'light'} onclick={() => mode = 'light'}>Light</button>
-      <button class:active={mode === 'dark'} onclick={() => mode = 'dark'}>Dark</button>
-     </div>
-    </div>
-    {#if canDownload}
-     <div class="actions">
-      <button class="primary" onclick={download}>Download PNG</button>
-     </div>
-    {/if}
+     {#if canDownload && !busy}
+      <section class="download-card">
+       <div class="download-ready">
+        <span class="download-check" aria-hidden="true">
+         <svg viewBox="0 0 20 20" fill="none"><path d="m5 10 3.2 3.2L15 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>
+         <strong>Transparent cutout is ready</strong>
+         <small>Full resolution · PNG</small>
+        </span>
+       </div>
+       <button class="primary-button full-width" type="button" onclick={download}>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 15v2h12v-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download transparent PNG
+       </button>
+      </section>
+     {/if}
+
+     <section class="privacy-note">
+      <span class="privacy-icon" aria-hidden="true">
+       <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 19 6v5.5c0 4.4-2.8 7.6-7 9.5-4.2-1.9-7-5.1-7-9.5V6l7-3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span>
+       <strong>Private by design</strong>
+       <small>Image pixels are processed in your browser, never uploaded. AI mode downloads its model and runtime after you choose removal.</small>
+      </span>
+     </section>
+    </aside>
    </section>
   {/if}
 
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
-
-  <aside>
-   <b>Your images never leave your device</b>
-   <p>Image pixels are processed on this device and are never uploaded. AI mode downloads model and runtime files from public hosts after you click Remove background; those downloads do not contain your photo. Manual colour removal stays entirely on-device and does not load the AI model.</p>
-  </aside>
+  {#if error}
+   <div class="error-message" role="alert">
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 6v4.5m0 3h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <span>{error}</span>
+   </div>
+  {/if}
  </main>
- <footer>PIXELCUTOUT <span>Private image editing, powered by your device.</span></footer>
+
+ <footer class="footer">
+  <span>PIXELCUTOUT</span>
+  <span>No account. No uploads. One image at a time.</span>
+ </footer>
 </div>
 
 <style>
-:global(*){box-sizing:border-box}
-:global(body){margin:0;background:#101114;color:#f5f4f0;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
-.shell{min-height:100vh;background:radial-gradient(ellipse at 50% 0,#252630,#101114 48rem)}
-header{height:72px;border-bottom:1px solid #ffffff16;display:flex;align-items:center;justify-content:space-between;padding:0 max(5vw,22px)}
-header span,.hero small{font-size:10px;letter-spacing:1.5px;color:#b7f477;font-weight:800}
-.brand{color:white;text-decoration:none;font-weight:800;display:flex;align-items:center;gap:10px}
-.brand b{background:#b7f477;color:#111;border-radius:8px;padding:6px 10px}
-main{max-width:820px;margin:auto;padding:70px 22px 48px}
-.hero{text-align:center;margin-bottom:30px}
-.hero h1{font-size:clamp(42px,7vw,68px);line-height:1;letter-spacing:-3px;margin:18px 0}
-.hero i{font-style:normal;color:#b7f477}
-.hero p,.drop p{color:#aaa;font-size:14px;line-height:1.6}
-.drop{min-height:310px;border:1px dashed #777;border-radius:20px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#ffffff05}
-.upload{width:48px;height:48px;background:#b7f477;color:#111;border-radius:14px;display:grid;place-items:center;font-size:27px}
-.drop h2{margin:16px 0 0}
-.drop small{color:#888;margin-top:18px}
-.drop .hint{margin-top:8px;color:#aab78f}
-.primary{border:0;border-radius:10px;padding:12px 20px;font-weight:750;cursor:pointer}
-.primary{background:#b7f477;color:#12150e}
-.drop .primary{margin:12px}
-.editor{background:#1b1c22;border:1px solid #ffffff20;border-radius:16px;padding:14px}
-.bar{display:flex;justify-content:space-between;align-items:center;padding:6px 3px 13px;color:#aaa;font-size:12px;gap:10px}
-.link{background:none;border:0;color:#b7f477;cursor:pointer}
-.preview{height:min(58vw,470px);min-height:270px;position:relative;display:grid;place-items:center;overflow:hidden;border-radius:10px}
-.preview.checker{background-color:#eee;background-image:linear-gradient(45deg,#ccc 25%,transparent 25%),linear-gradient(-45deg,#ccc 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ccc 75%),linear-gradient(-45deg,transparent 75%,#ccc 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}
-.preview.light{background:#f5f5f5}
-.preview.dark{background:#202126}
-.preview>img,.before img{max-width:100%;max-height:100%;object-fit:contain}
-.sampler{display:grid;place-items:center;max-width:100%;max-height:100%;padding:0;border:0;background:transparent;cursor:crosshair}
-.sampler img{display:block;max-width:100%;max-height:100%;object-fit:contain}
-.before{position:absolute;inset:0;display:grid;place-items:center}
-.before img{width:100%;height:100%;object-fit:contain}
-.range{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;z-index:4;cursor:ew-resize;touch-action:pan-y}
-.range::-webkit-slider-runnable-track{height:100%;background:transparent}
-.range::-webkit-slider-thumb{appearance:none;width:44px;height:100%;margin:0;background:transparent;border:0}
-.range::-moz-range-track{height:100%;background:transparent}
-.range::-moz-range-thumb{width:44px;height:100%;background:transparent;border:0;border-radius:0}
-.comparison-divider{position:absolute;top:0;bottom:0;width:2px;transform:translateX(-50%);background:#b7f477;display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none;box-shadow:0 0 0 1px #1115}
-.comparison-handle{display:grid;place-items:center;width:42px;height:42px;border:2px solid #101114;border-radius:50%;background:#b7f477;color:#101114;font-weight:900;font-size:20px;line-height:1;box-shadow:0 2px 12px #0008}
-.comparison-label{position:absolute;top:12px;z-index:2;padding:5px 8px;border-radius:6px;background:#101114c9;color:#fff;font-size:10px;font-weight:750;letter-spacing:.04em;pointer-events:none}
-.original-label{left:12px}
-.result-label{right:12px}
-.preview:has(.range:focus-visible) .comparison-handle{outline:3px solid #fff;outline-offset:4px}
-.busy{position:absolute;inset:0;background:#111c;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:20px;text-align:center}
-.busy small{color:#bbb;max-width:380px;line-height:1.5}
-.spinner{width:30px;height:30px;border:3px solid #ffffff40;border-top-color:#b7f477;border-radius:50%;animation:spin 1s linear infinite}
-.progress-track{width:min(330px,85%);height:9px;background:#ffffff30;border-radius:20px;overflow:hidden}
-.progress-track span{display:block;height:100%;background:#b7f477;border-radius:20px;transition:width .18s ease}
-@keyframes spin{to{transform:rotate(360deg)}}
-.tool-panel{margin:12px 2px 18px;padding:14px;background:#ffffff08;border:1px solid #ffffff12;border-radius:12px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
-.tool-panel>p{font-size:12px;color:#aaa;line-height:1.5;margin:0}
-.tool-panel .tool-instruction{color:#eee}
-.advanced-toggle{font-size:12px;text-align:left;padding:2px 0}
-.sample-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12px;color:#ddd}
-.swatch{display:inline-block;width:22px;height:22px;border:1px solid #ffffff80;border-radius:6px}
-.tolerance-label{width:100%;display:flex;justify-content:space-between;color:#ddd;font-size:12px}
-.tolerance-label strong{color:#b7f477}
-.tolerance{width:100%;accent-color:#b7f477}
-.helper{color:#999;font-size:11px;line-height:1.5}
-.modes button{background:none;border:1px solid #ffffff22;color:#aaa;border-radius:6px;padding:6px 9px;margin-left:5px;cursor:pointer}
-.modes button.active{border-color:#b7f477;color:#b7f477}
-.actions{display:flex;justify-content:center;gap:10px;padding:10px}
-aside{margin:25px 0;color:#b7f477}
-aside b{color:#eee;font-size:13px}
-aside p{font-size:12px;line-height:1.6;color:#999}
-.error{color:#ff9b9b;text-align:center}
-footer{border-top:1px solid #ffffff15;padding:20px 5vw;color:#777;font-size:10px;letter-spacing:1px}
-footer span{float:right;letter-spacing:0}
-@media(max-width:560px){main{padding-top:48px}.hero h1{letter-spacing:-2px}footer span{float:none;display:block;margin-top:8px}}
+:global(:root) {
+ color-scheme: light;
+ font-synthesis: none;
+ --ink-900: hsl(218 32% 17%);
+ --ink-700: hsl(216 24% 31%);
+ --ink-600: hsl(215 18% 42%);
+ --ink-500: hsl(215 16% 49%);
+ --surface: hsl(216 33% 98%);
+ --surface-2: hsl(216 27% 95%);
+ --surface-3: hsl(216 22% 91%);
+ --white: hsl(0 0% 100%);
+ --line: hsl(216 23% 88%);
+ --line-strong: hsl(215 20% 80%);
+ --blue-700: hsl(218 86% 40%);
+ --blue-600: hsl(218 88% 49%);
+ --blue-100: hsl(218 86% 94%);
+ --green-700: hsl(155 54% 27%);
+ --green-100: hsl(145 45% 93%);
+ --red-700: hsl(0 62% 37%);
+ --red-100: hsl(0 75% 96%);
+ --space-1: 4px;
+ --space-2: 8px;
+ --space-3: 12px;
+ --space-4: 16px;
+ --space-5: 24px;
+ --space-6: 32px;
+ --space-7: 40px;
+ --space-8: 48px;
+ --radius-md: 10px;
+ --radius-lg: 16px;
+ --radius-xl: 20px;
+}
+:global(*) { box-sizing: border-box; }
+:global(body) {
+ margin: 0;
+ background: var(--surface);
+ color: var(--ink-900);
+ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Ubuntu, "Helvetica Neue", sans-serif;
+ font-size: 15px;
+ line-height: 1.5;
+}
+:global(button), :global(input) { font: inherit; }
+:global(button) { -webkit-tap-highlight-color: transparent; }
+:global(button:focus-visible), :global(input:focus-visible), :global(a:focus-visible) {
+ outline: 3px solid hsl(218 95% 55% / 45%);
+ outline-offset: 3px;
+}
+.app-shell { min-height: 100vh; background: linear-gradient(180deg, hsl(214 34% 99%) 0%, var(--surface) 440px); }
+.topbar { height: 68px; background: hsl(0 0% 100% / 88%); border-bottom: 1px solid hsl(216 23% 88% / 85%); }
+.topbar-inner {
+ width: min(1180px, calc(100% - 48px));
+ height: 100%;
+ margin: 0 auto;
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+}
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-900); text-decoration: none; font-weight: 700; font-size: 16px; letter-spacing: -.25px; }
+.brand-mark {
+ width: 30px;
+ height: 30px;
+ display: grid;
+ place-items: center;
+ border-radius: 9px;
+ color: #fff;
+ background: var(--ink-900);
+ font-size: 17px;
+ font-weight: 750;
+}
+.privacy-pill {
+ display: inline-flex;
+ align-items: center;
+ gap: 8px;
+ padding: 7px 11px;
+ border-radius: 999px;
+ background: var(--green-100);
+ color: var(--green-700);
+ font-size: 12px;
+ font-weight: 650;
+}
+.privacy-dot, .result-dot { width: 7px; height: 7px; border-radius: 50%; background: hsl(151 55% 37%); }
+.page { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 48px 0 64px; }
+.hero { max-width: 680px; margin: 0 auto 36px; text-align: center; }
+.eyebrow {
+ display: inline-flex;
+ align-items: center;
+ gap: 9px;
+ margin-bottom: 14px;
+ color: var(--ink-600);
+ font-size: 11px;
+ font-weight: 700;
+ letter-spacing: .09em;
+ text-transform: uppercase;
+}
+.eyebrow-line { width: 20px; height: 2px; border-radius: 2px; background: var(--blue-600); }
+.hero h1 { margin: 0; color: var(--ink-900); font-size: clamp(32px, 4vw, 44px); line-height: 1.08; letter-spacing: -1.8px; font-weight: 750; }
+.hero h1 span { color: var(--blue-700); }
+.hero p { max-width: 520px; margin: 15px auto 0; color: var(--ink-600); font-size: 15px; line-height: 1.65; }
+.upload-card {
+ width: min(780px, 100%);
+ min-height: 324px;
+ margin: 0 auto;
+ padding: 38px 26px 30px;
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ justify-content: center;
+ border: 1.5px dashed var(--line-strong);
+ border-radius: var(--radius-xl);
+ background: var(--white);
+ box-shadow: 0 8px 30px hsl(218 34% 25% / 5%);
+ text-align: center;
+ transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.upload-card.drag-active {
+ border-color: var(--blue-600);
+ background: hsl(218 90% 98%);
+ box-shadow: 0 0 0 4px hsl(218 88% 49% / 9%), 0 12px 32px hsl(218 34% 25% / 8%);
+}
+.upload-illustration {
+ width: 58px;
+ height: 58px;
+ margin-bottom: 17px;
+ display: grid;
+ place-items: center;
+ border-radius: 17px;
+ background: var(--blue-100);
+ color: var(--blue-700);
+}
+.upload-illustration svg { width: 31px; height: 31px; }
+.upload-card h2 { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 700; letter-spacing: -.35px; }
+.upload-subtitle { margin: 6px 0 17px; color: var(--ink-600); font-size: 14px; }
+.primary-button {
+ min-height: 44px;
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ gap: 10px;
+ padding: 11px 17px;
+ border: 1px solid transparent;
+ border-radius: 10px;
+ color: #fff;
+ background: var(--blue-600);
+ box-shadow: 0 2px 4px hsl(218 84% 35% / 14%);
+ font-size: 14px;
+ font-weight: 700;
+ cursor: pointer;
+ transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.primary-button:hover { background: var(--blue-700); box-shadow: 0 4px 10px hsl(218 84% 35% / 20%); }
+.primary-button:active { transform: translateY(1px); }
+.primary-button svg { width: 17px; height: 17px; }
+.full-width { width: 100%; }
+.file-specs { margin-top: 22px; display: flex; align-items: center; gap: 7px; color: var(--ink-600); font-size: 11px; font-weight: 650; }
+.file-specs span:not(:last-child) { padding: 4px 7px; border-radius: 5px; background: var(--surface-2); color: var(--ink-700); letter-spacing: .02em; }
+.file-specs i { width: 1px; height: 14px; margin: 0 4px; background: var(--line-strong); }
+.upload-help { margin: 12px 0 0; color: var(--ink-500); font-size: 12px; }
+.workspace {
+ display: grid;
+ grid-template-columns: minmax(0, 1fr) 288px;
+ align-items: start;
+ gap: 24px;
+}
+.canvas-panel {
+ min-width: 0;
+ padding: 16px;
+ border: 1px solid var(--line);
+ border-radius: var(--radius-xl);
+ background: var(--white);
+ box-shadow: 0 8px 28px hsl(218 34% 25% / 5%);
+}
+.canvas-heading { min-height: 42px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.file-summary { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.file-icon {
+ width: 34px;
+ height: 34px;
+ flex: 0 0 auto;
+ display: grid;
+ place-items: center;
+ border-radius: 9px;
+ background: var(--surface-2);
+ color: var(--ink-600);
+}
+.file-icon svg { width: 20px; height: 20px; }
+.file-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.file-text strong { max-width: min(420px, 48vw); overflow: hidden; color: var(--ink-900); font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.file-text small { color: var(--ink-500); font-size: 11px; }
+.secondary-button {
+ min-height: 36px;
+ flex: 0 0 auto;
+ padding: 8px 11px;
+ border: 1px solid var(--line);
+ border-radius: 9px;
+ color: var(--ink-700);
+ background: var(--white);
+ font-size: 12px;
+ font-weight: 650;
+ cursor: pointer;
+}
+.secondary-button:hover { background: var(--surface-2); border-color: var(--line-strong); }
+.preview-stage {
+ position: relative;
+ height: min(62vh, 540px);
+ min-height: 340px;
+ display: grid;
+ place-items: center;
+ overflow: hidden;
+ border-radius: 12px;
+ background-color: #f0f3f7;
+ box-shadow: inset 0 0 0 1px hsl(216 30% 28% / 8%);
+}
+.preview-stage.checker {
+ background-color: #f1f3f6;
+ background-image:
+  linear-gradient(45deg, #dfe4eb 25%, transparent 25%),
+  linear-gradient(-45deg, #dfe4eb 25%, transparent 25%),
+  linear-gradient(45deg, transparent 75%, #dfe4eb 75%),
+  linear-gradient(-45deg, transparent 75%, #dfe4eb 75%);
+ background-size: 24px 24px;
+ background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+}
+.preview-stage.light { background: #fbfcfd; }
+.preview-stage.dark { background: #222b36; }
+.preview-image { display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%; padding: 18px; object-fit: contain; }
+.sampler { width: 100%; height: 100%; display: grid; place-items: center; padding: 0; border: 0; background: transparent; cursor: crosshair; }
+.sampler:focus-visible { outline-offset: -5px; }
+.sampler img { pointer-events: none; }
+.before { position: absolute; inset: 0; display: grid; place-items: center; }
+.before img { width: 100%; height: 100%; object-fit: contain; }
+.comparison-range {
+ position: absolute;
+ inset: 0;
+ z-index: 4;
+ width: 100%;
+ height: 100%;
+ margin: 0;
+ opacity: 0;
+ cursor: ew-resize;
+ touch-action: pan-y;
+}
+.comparison-range::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+.comparison-range::-webkit-slider-thumb { appearance: none; width: 44px; height: 100%; margin: 0; border: 0; background: transparent; }
+.comparison-range::-moz-range-track { height: 100%; background: transparent; }
+.comparison-range::-moz-range-thumb { width: 44px; height: 100%; border: 0; border-radius: 0; background: transparent; }
+.comparison-divider {
+ position: absolute;
+ top: 0;
+ bottom: 0;
+ z-index: 2;
+ width: 2px;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ transform: translateX(-50%);
+ background: var(--blue-600);
+ box-shadow: 0 0 0 1px hsl(0 0% 100% / 30%);
+ pointer-events: none;
+}
+.comparison-handle {
+ width: 42px;
+ height: 42px;
+ display: grid;
+ place-items: center;
+ border: 2px solid #fff;
+ border-radius: 50%;
+ color: #fff;
+ background: var(--blue-600);
+ font-size: 20px;
+ font-weight: 800;
+ line-height: 1;
+ box-shadow: 0 2px 10px hsl(218 30% 18% / 24%);
+}
+.comparison-label {
+ position: absolute;
+ top: 13px;
+ z-index: 3;
+ padding: 6px 9px;
+ border-radius: 6px;
+ color: #fff;
+ background: hsl(218 32% 17% / 88%);
+ font-size: 11px;
+ font-weight: 700;
+ letter-spacing: .01em;
+ pointer-events: none;
+}
+.original-label { left: 13px; }
+.result-label { right: 13px; }
+.preview-stage:has(.comparison-range:focus-visible) .comparison-handle { outline: 3px solid hsl(218 95% 55% / 55%); outline-offset: 4px; }
+.processing-overlay {
+ position: absolute;
+ inset: 0;
+ z-index: 5;
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ justify-content: center;
+ gap: 11px;
+ padding: 22px;
+ color: #fff;
+ background: hsl(218 32% 14% / 88%);
+ text-align: center;
+}
+.processing-overlay strong { font-size: 16px; font-weight: 700; }
+.processing-overlay p { max-width: 330px; margin: 0; color: hsl(0 0% 100% / 88%); font-size: 13px; line-height: 1.55; }
+.spinner { width: 30px; height: 30px; border: 3px solid hsl(0 0% 100% / 30%); border-top-color: #fff; border-radius: 50%; animation: spin .9s linear infinite; }
+.progress-track { width: min(320px, 85%); height: 8px; overflow: hidden; border-radius: 99px; background: hsl(0 0% 100% / 24%); }
+.progress-track span { display: block; height: 100%; border-radius: inherit; background: #fff; transition: width .18s ease; }
+.overlay-action { margin-top: 4px; padding: 7px 12px; border: 1px solid hsl(0 0% 100% / 35%); border-radius: 7px; color: #fff; background: transparent; font-size: 12px; font-weight: 650; cursor: pointer; }
+.overlay-action:hover { background: hsl(0 0% 100% / 12%); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.canvas-toolbar { min-height: 52px; padding: 13px 2px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.toolbar-label { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.toolbar-label > strong { color: var(--ink-600); font-size: 12px; font-weight: 650; }
+.result-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 7px; border-radius: 6px; background: var(--green-100); color: var(--green-700); font-size: 10px; font-weight: 700; }
+.result-dot { width: 6px; height: 6px; }
+.segmented-control { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 9px; background: var(--surface-2); }
+.segmented-control button { min-height: 29px; padding: 5px 9px; border: 0; border-radius: 7px; color: var(--ink-600); background: transparent; font-size: 11px; font-weight: 600; cursor: pointer; }
+.segmented-control button:hover { color: var(--ink-900); }
+.segmented-control button.active { color: var(--ink-900); background: #fff; box-shadow: 0 1px 3px hsl(218 30% 20% / 12%); }
+.control-panel { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.control-card {
+ padding: 20px;
+ border: 1px solid var(--line);
+ border-radius: var(--radius-lg);
+ background: var(--white);
+ box-shadow: 0 5px 18px hsl(218 34% 25% / 4%);
+}
+.control-kicker { color: var(--blue-700); font-size: 10px; font-weight: 800; letter-spacing: .1em; }
+.control-card h2 { margin: 9px 0 7px; color: var(--ink-900); font-size: 18px; font-weight: 720; letter-spacing: -.3px; line-height: 1.25; }
+.control-card > p { margin: 0; color: var(--ink-600); font-size: 13px; line-height: 1.55; }
+.control-card .primary-button { margin-top: 18px; }
+.action-note { margin-top: 10px !important; color: var(--ink-500) !important; font-size: 11px !important; line-height: 1.5 !important; }
+.secondary-tool { padding: 4px 2px 7px; display: flex; flex-direction: column; gap: 5px; }
+.secondary-tool > span { color: var(--ink-500); font-size: 11px; }
+.text-action { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 3px 0; border: 0; color: var(--blue-700); background: transparent; font-size: 13px; font-weight: 700; text-align: left; cursor: pointer; }
+.text-action:hover { color: var(--blue-700); text-decoration: underline; text-underline-offset: 3px; }
+.text-action.compact { font-size: 11px; }
+.back-action { margin: -3px 0 0 2px; }
+.manual-card { display: flex; flex-direction: column; gap: 10px; }
+.manual-card h2 { margin-bottom: -3px; }
+.manual-card .primary-button { margin-top: 4px; }
+.sample-instruction { display: flex; align-items: flex-start; gap: 10px; margin-top: 6px; padding: 11px; border-radius: 10px; background: var(--surface-2); }
+.sample-number { width: 22px; height: 22px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; color: var(--blue-700); background: var(--blue-100); font-size: 11px; font-weight: 800; }
+.sample-instruction p { margin: 1px 0 0; color: var(--ink-700); font-size: 12px; line-height: 1.5; }
+.sample-row { display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px; border-radius: 10px; background: var(--surface-2); }
+.swatch { width: 26px; height: 26px; flex: 0 0 auto; border: 2px solid #fff; border-radius: 7px; box-shadow: 0 0 0 1px var(--line-strong); }
+.sample-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.sample-copy strong { color: var(--ink-700); font-size: 11px; font-weight: 700; }
+.sample-copy span { color: var(--ink-500); font-size: 10px; }
+.tolerance-label { width: 100%; display: flex; align-items: baseline; justify-content: space-between; color: var(--ink-700); font-size: 12px; font-weight: 650; }
+.tolerance-label strong { color: var(--blue-700); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tolerance { width: 100%; margin: 0; accent-color: var(--blue-600); }
+.helper { margin: 0 !important; color: var(--ink-500) !important; font-size: 11px !important; line-height: 1.5 !important; }
+.download-card { padding: 16px; border: 1px solid hsl(145 35% 82%); border-radius: var(--radius-lg); background: hsl(145 48% 97%); }
+.download-ready { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+.download-check { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; color: var(--green-700); background: hsl(145 45% 89%); }
+.download-check svg { width: 18px; height: 18px; }
+.download-ready > span:last-child { display: flex; flex-direction: column; gap: 1px; }
+.download-ready strong { color: var(--green-700); font-size: 12px; font-weight: 750; }
+.download-ready small { color: var(--ink-600); font-size: 11px; }
+.privacy-note { display: flex; align-items: flex-start; gap: 10px; padding: 14px; border-radius: 12px; background: hsl(218 65% 96%); }
+.privacy-icon { width: 22px; height: 22px; flex: 0 0 auto; display: grid; place-items: center; color: var(--blue-700); }
+.privacy-icon svg { width: 21px; height: 21px; }
+.privacy-note > span:last-child { display: flex; flex-direction: column; gap: 3px; }
+.privacy-note strong { color: var(--ink-900); font-size: 12px; font-weight: 700; }
+.privacy-note small { color: var(--ink-600); font-size: 11px; line-height: 1.5; }
+.error-message {
+ width: min(780px, 100%);
+ margin: 18px auto 0;
+ padding: 11px 13px;
+ display: flex;
+ align-items: flex-start;
+ gap: 9px;
+ border-radius: 10px;
+ color: var(--red-700);
+ background: var(--red-100);
+ font-size: 13px;
+ line-height: 1.5;
+}
+.error-message svg { width: 18px; height: 18px; flex: 0 0 auto; margin-top: 1px; }
+.footer {
+ width: min(1180px, calc(100% - 48px));
+ margin: 0 auto;
+ padding: 18px 0 24px;
+ display: flex;
+ justify-content: space-between;
+ gap: 15px;
+ border-top: 1px solid var(--line);
+ color: var(--ink-500);
+ font-size: 11px;
+}
+.footer span:first-child { color: var(--ink-700); font-weight: 750; letter-spacing: .08em; }
+@media (max-width: 900px) {
+ .workspace { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+ .control-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+ .control-panel .privacy-note { grid-column: 1 / -1; }
+ .control-panel .secondary-tool, .control-panel .back-action { padding-left: 4px; }
+}
+@media (max-width: 600px) {
+ .topbar { height: 60px; }
+ .topbar-inner, .page, .footer { width: calc(100% - 32px); }
+ .privacy-pill { padding: 6px 8px; font-size: 10px; }
+ .page { padding-top: 31px; padding-bottom: 42px; }
+ .hero { margin-bottom: 25px; }
+ .hero h1 { font-size: 33px; letter-spacing: -1.25px; }
+ .hero p { max-width: 340px; margin-top: 11px; font-size: 14px; }
+ .upload-card { min-height: 300px; padding: 30px 17px 24px; }
+ .workspace { gap: 12px; }
+ .canvas-panel { padding: 11px; border-radius: 15px; }
+ .canvas-heading { min-height: 39px; margin-bottom: 10px; }
+ .file-text strong { max-width: 48vw; font-size: 12px; }
+ .secondary-button { min-height: 34px; padding: 7px 9px; font-size: 11px; }
+ .preview-stage { height: 72vw; min-height: 250px; max-height: 420px; }
+ .preview-image { padding: 12px; }
+ .canvas-toolbar { align-items: flex-start; flex-direction: column; gap: 9px; padding-top: 12px; }
+ .segmented-control { width: 100%; }
+ .segmented-control button { flex: 1; }
+ .control-panel { grid-template-columns: minmax(0, 1fr); gap: 11px; }
+ .control-panel .privacy-note { grid-column: auto; }
+ .control-card { padding: 17px; }
+ .footer { flex-direction: column; gap: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+ :global(*), :global(*::before), :global(*::after) { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
 </style>
