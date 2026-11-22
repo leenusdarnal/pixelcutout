@@ -81,7 +81,6 @@
   aiDownloadProgress = null;
   aiDownloadFile = '';
 
-  if (cutout) URL.revokeObjectURL(cutout);
   cutout = '';
  }
 
@@ -106,7 +105,7 @@
      aiStage = 'loading';
     }
    } else if (event.data?.type === 'result' && event.data.blob instanceof Blob) {
-    if (cutout) URL.revokeObjectURL(cutout);
+    releaseImageResources({ objectUrls: [cutout] });
     cutout = URL.createObjectURL(event.data.blob);
     busy = false;
     aiDownloadProgress = null;
@@ -132,7 +131,7 @@
  function beginProcessing(message: Record<string, unknown>) {
   if (!file) return;
 
-  if (cutout) URL.revokeObjectURL(cutout);
+  releaseImageResources({ objectUrls: [cutout] });
   cutout = '';
   error = '';
   busy = true;
