@@ -1,3 +1,5 @@
+/** @typedef {{ width: number, height: number }} ImageDimensions */
+
 const HEADER_READ_LIMIT = 2 * 1024 * 1024;
 
 export const MAX_IMAGE_PIXELS = 16_000_000;
@@ -5,6 +7,7 @@ export const MAX_IMAGE_DIMENSION = 10_000;
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
+/** @param {Uint8Array} bytes @param {number} offset @param {string} value @returns {boolean} */
 function matchesAscii(bytes, offset, value) {
   if (offset + value.length > bytes.length) return false;
   for (let i = 0; i < value.length; i += 1) {
@@ -13,10 +16,12 @@ function matchesAscii(bytes, offset, value) {
   return true;
 }
 
+/** @param {Uint8Array} bytes @returns {boolean} */
 function isPng(bytes) {
   return PNG_SIGNATURE.every((byte, index) => bytes[index] === byte);
 }
 
+/** @param {Uint8Array} bytes @returns {ImageDimensions | null} */
 function readPngDimensions(bytes) {
   if (bytes.length < 24 || !isPng(bytes) || !matchesAscii(bytes, 12, 'IHDR')) return null;
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -26,10 +31,12 @@ function readPngDimensions(bytes) {
   };
 }
 
+/** @param {Uint8Array} bytes @returns {boolean} */
 function isJpeg(bytes) {
   return bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8;
 }
 
+/** @param {number} marker @returns {boolean} */
 function isStartOfFrame(marker) {
   return [
     0xc0, 0xc1, 0xc2, 0xc3,
@@ -39,6 +46,7 @@ function isStartOfFrame(marker) {
   ].includes(marker);
 }
 
+/** @param {Uint8Array} bytes @returns {ImageDimensions | null} */
 function readJpegDimensions(bytes) {
   if (!isJpeg(bytes)) return null;
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -78,6 +86,7 @@ function readJpegDimensions(bytes) {
   return null;
 }
 
+/** @param {Uint8Array} bytes @returns {ImageDimensions | null} */
 function readWebpDimensions(bytes) {
   if (
     bytes.length < 30 ||
@@ -127,12 +136,14 @@ function readWebpDimensions(bytes) {
  * Reads only a small prefix of an image file to determine its intrinsic dimensions.
  * This avoids decoding or allocating a full-resolution bitmap just to validate the file.
  */
+/** @param {Blob} file @returns {Promise<ImageDimensions>} */
 export async function readImageDimensions(file) {
   if (!file || typeof file.slice !== 'function' || !Number.isFinite(file.size)) {
     throw new TypeError('A valid image file is required.');
   }
 
   const bytes = new Uint8Array(await file.slice(0, HEADER_READ_LIMIT).arrayBuffer());
+  /** @type {ImageDimensions | null} */
   let dimensions = null;
 
   if (file.type === 'image/png') dimensions = readPngDimensions(bytes);
@@ -152,7 +163,9 @@ export async function readImageDimensions(file) {
   return dimensions;
 }
 
-export function validateImageDimensions({ width, height }) {
+/** @param {ImageDimensions} dimensions */
+export function validateImageDimensions(dimensions) {
+  const { width, height } = dimensions;
   if (
     !Number.isSafeInteger(width) ||
     !Number.isSafeInteger(height) ||
