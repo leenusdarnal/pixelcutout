@@ -11,7 +11,7 @@ PixelCutout is a privacy-first, browser-based background remover. It processes o
 
 AI removal is the primary method. **Advanced: manual colour removal** is available for simple, fairly uniform backgrounds.
 
-To use it, open **Advanced: manual colour removal**, click the background to sample a colour, then adjust the tolerance. Pointer/touch activation samples the selected point; keyboard activation samples the image centre. PixelCutout shows a debounced, reduced-size preview (maximum 512 pixels on the longest side) before you apply it. Click **Remove selected colour** to process the original image at full resolution. The original and AI result are kept separately; switching between AI and manual mode does not overwrite either result. **Choose again** clears the current manual edit so you can sample another colour. A manual preview cannot be downloaded as though it were a full-resolution result; download is enabled only after the current colour and tolerance have been applied.
+To use it, choose **Use manual colour removal**, click the background to sample a colour, then adjust the tolerance. Pointer/touch activation samples the selected point; keyboard activation samples the image centre. PixelCutout shows a debounced, reduced-size preview (maximum 512 pixels on the longest side) before you apply it. Click **Apply at full resolution** to process the original image. The original and AI result are kept separately; switching between AI and manual mode does not overwrite either result. **Choose again** clears the current manual edit so you can sample another colour. The preview surface can be switched between checkerboard, light, and dark backgrounds. A manual preview cannot be downloaded as though it were a full-resolution result; download is enabled only after the current colour and tolerance have been applied.
 
 ## Privacy
 
@@ -29,6 +29,10 @@ A first-time AI run requires an internet connection to download model assets. Th
 The AI workflow currently uses [Xenova/modnet](https://huggingface.co/Xenova/modnet), a portrait-matting model published under Apache-2.0. It is designed primarily for people and portraits; results on pets, products, fine objects, glass, and complex scenes may be less reliable.
 
 The browser tries the WebGPU model first and falls back to the WASM model. Browser, driver, and device compatibility vary. The model/runtime benchmark is tracked before any production model replacement. The exact model source, observed upstream revision, licence, and update procedure are documented in [docs/MODEL_PROVENANCE.md](docs/MODEL_PROVENANCE.md). If both runtimes fail, the app shows a recoverable error so you can retry or use manual colour removal.
+
+## Interface design
+
+The upload and editing workspace follows the principles in [docs/UI_DESIGN_SYSTEM.md](docs/UI_DESIGN_SYSTEM.md): one clear primary action, a restrained spacing/type/color system, contained user images, accessible state feedback, and a responsive preview-and-controls layout. The guide records the relevant topics and page references from *Refactoring UI*.
 
 ## Lightweight scope
 
@@ -62,4 +66,4 @@ The ONNX Runtime Node package has a post-install step that may attempt to downlo
 
 ## Project tracking
 
-The implementation plan and acceptance checks are maintained in [docs/PROJECT_TRACKER.md](docs/PROJECT_TRACKER.md). The SvelteKit 3 migration implementation and verification record are maintained in [docs/SVELTEKIT_MIGRATION_PLAN.md](docs/SVELTEKIT_MIGRATION_PLAN.md); the migration was merged in PR [#26](https://github.com/leenusdarnal/pixelcutout/pull/26). CI and the Vercel preview build passed; protected-preview browser/device verification remains open. See [docs/BASELINE.md](docs/BASELINE.md) and [docs/DEPENDENCY_AUDIT.md](docs/DEPENDENCY_AUDIT.md) for the measured pre-simplification baseline and dependency inventory.
+The implementation plan and acceptance checks are maintained in [docs/PROJECT_TRACKER.md](docs/PROJECT_TRACKER.md). The SvelteKit 3 migration implementation and verification record are maintained in [docs/SVELTEKIT_MIGRATION_PLAN.md](docs/SVELTEKIT_MIGRATION_PLAN.md); the migration was merged in PR [#26](https://github.com/leenusdarnal/pixelcutout/pull/26). Model candidates and evaluation evidence are tracked in [docs/MODEL_BENCHMARK.md](docs/MODEL_BENCHMARK.md) and [docs/MODEL_PROVENANCE.md](docs/MODEL_PROVENANCE.md). See [docs/BASELINE.md](docs/BASELINE.md) and [docs/DEPENDENCY_AUDIT.md](docs/DEPENDENCY_AUDIT.md) for the measured pre-simplification baseline and dependency inventory.
