@@ -74,7 +74,14 @@ Preserve these product constraints:
 
 ## Remaining verification before merge
 
-- [ ] PR CI and Vercel preview checks pass.
-- [ ] Browser network inspection confirms the AI runtime/model is not fetched before the explicit AI action and no image pixels leave the browser.
-- [ ] Desktop and mobile preview checks cover AI removal, manual colour fallback, cancellation/replacement, before/after comparison, and transparent PNG export.
-- [ ] Record final preview URL, check runs, and any limitations in this document before merge.
+### CI and preview deployment evidence (2026-11-22)
+
+- [x] GitHub Actions run [#120](https://github.com/leenusdarnal/pixelcutout/actions/runs/45030358627) passed: dependency installation, production audit, full advisory report, build, type-check, 34 unit tests, and cleanup steps.
+- [x] Vercel preview deployment is READY for commit `82a8e124634d510e781631c4134061131c433ac9`: [preview URL](https://pixelcutout-322089iwd-leenusdarnals-projects.vercel.app) · [deployment details](https://vercel.com/leenusdarnals-projects/pixelcutout/AMDGCe2zo1b1QcQRR5TVjFTXBpUx).
+- Automated HTTP inspection was redirected to Vercel login because this preview is protected. Live browser/network and end-to-end device checks therefore remain unverified; deployment protection was not changed.
+
+## Remaining verification before merge
+
+- [x] PR CI and Vercel preview deployment status pass.
+- [ ] Complete browser network inspection with authorized preview access: confirm no model/runtime request before the explicit AI action and no image pixels leave the browser.
+- [ ] Complete desktop and mobile workflow checks for AI removal, manual colour fallback, cancellation/replacement, before/after comparison, and transparent PNG export.
