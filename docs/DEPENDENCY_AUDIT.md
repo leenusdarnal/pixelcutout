@@ -26,19 +26,23 @@ Direct dependency count: **4 runtime + 4 development**. The lockfile contains **
 | `onnxruntime-node` | 1.21.0 | Node binding brought in by Transformers.js; install script attempted optional Linux CUDA download and failed with HTTP 404 in CI | Do not add it as a direct dependency. CI skips the optional CUDA download. Revisit only if server-side Node inference becomes a requirement. |
 | `sharp` | `^0.34.1` (resolved by lockfile) | Listed as a Transformers.js transitive dependency; not imported by application source | Do not remove by hand from the lockfile. Reassess whether the package's optional/dependency structure can be reduced safely when evaluating the AI runtime. |
 
-## Local modules that do not add package dependencies
+## Local modules
+
+The following local modules remain in the focused first-release path:
 
 - Manual colour removal: `src/lib/image/remove-color.js`.
-- Alpha feathering: `src/lib/image/feather-alpha.js`.
-- ZIP writing utility: `src/lib/image/zip-store.js` (currently used by the existing batch flow).
-- No separate ZIP, editor, state-management, or UI component package is listed as a direct dependency.
+- The background-removal worker: `src/lib/workers/remove-background.ts`.
+- Manual colour tests: `src/lib/image/remove-color.test.mjs`.
+
+The pre-simplification implementation also contained batch/ZIP modules, alpha-feather editing utilities, and a Studio editor component. These were removed when the app was narrowed to the agreed first-release scope; no separate ZIP, editor, state-management, or UI component package is needed.
 
 ## Scope and bundle observations
 
-- The main page statically imports both `StudioEditor.svelte` and `BatchProcessor.svelte`. Those features are currently in the route even though batch processing and broad Studio editing are deferred from the agreed first-release scope.
+- The main page statically imports no editor or batch-processing component.
 - The worker entry is created only when a removal action starts. Transformers.js is dynamically imported only for AI removal.
-- The largest emitted assets are the worker runtime chunk (902.08 kB) and ONNX Runtime WASM (21,596.02 kB). These are priority investigation targets, but model quality, runtime compatibility, and privacy must remain acceptable.
+- The pre-simplification baseline showed a 902.08 kB worker runtime chunk and 21,596.02 kB ONNX Runtime WASM asset. The focused app should be remeasured in the next successful production build to quantify the reduction.
+- Batch processing, ZIP export, brushes, undo/redo, crop, background replacement, shadows, and multi-format export remain outside the initial release.
 
 ## Removal decision
 
-No direct dependency has been removed in this audit. Each of the eight direct dependencies has a clear role in the current source/build. Removing a package without an alternative would break the existing toolchain or the primary AI workflow. The best immediate reduction is scope/code-level: remove deferred Batch/Studio paths from the initial release and benchmark the AI runtime/model before replacing a dependency.
+No direct dependency was removed in this audit. Each of the eight direct dependencies has a clear role in the current source/build. Removing a package without an alternative would break the toolchain or primary AI workflow. The first reduction was made by removing out-of-scope application code, not by changing the framework or AI runtime.
