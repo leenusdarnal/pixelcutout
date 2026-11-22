@@ -1,6 +1,5 @@
 <script lang="ts">
  import { onMount } from 'svelte';
- import { readImageDimensions, validateImageDimensions } from '$lib/image/image-dimensions.js';
 
  type RemovalMode = 'ai' | 'manual';
  type SampleColor = { r: number; g: number; b: number };
@@ -41,6 +40,7 @@
 
   // Read only the image header; do not decode a full-size bitmap to check its dimensions.
   try {
+   const { readImageDimensions, validateImageDimensions } = await import('$lib/image/image-dimensions.js');
    const dimensions = await readImageDimensions(nextFile);
    validateImageDimensions(dimensions);
   } catch (validationError) {
