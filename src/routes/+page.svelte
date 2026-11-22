@@ -2,6 +2,7 @@
  import { onMount } from 'svelte';
  import { releaseImageResources } from '$lib/image/resource-lifecycle.js';
  import { removeColorPixels } from '$lib/image/remove-color.js';
+ import { getBackgroundSamplePoint } from '$lib/image/sample-point.js';
 
  type RemovalMode = 'ai' | 'manual';
  type SampleColor = { r: number; g: number; b: number };
@@ -217,11 +218,18 @@
   const visibleImage = (event.currentTarget as HTMLElement).querySelector('img');
   if (!visibleImage || !visibleImage.naturalWidth || !visibleImage.naturalHeight) return;
 
-  const rect = visibleImage.getBoundingClientRect();
-  const x = Math.max(0, Math.min(visibleImage.naturalWidth - 1, Math.floor((event.clientX - rect.left) * visibleImage.naturalWidth / rect.width)));
-  const y = Math.max(0, Math.min(visibleImage.naturalHeight - 1, Math.floor((event.clientY - rect.top) * visibleImage.naturalHeight / rect.height)));
+  let x: number;
+  let y: number;
 
   try {
+   ({ x, y } = getBackgroundSamplePoint({
+    imageWidth: visibleImage.naturalWidth,
+    imageHeight: visibleImage.naturalHeight,
+    bounds: visibleImage.getBoundingClientRect(),
+    clientX: event.clientX,
+    clientY: event.clientY,
+    keyboardActivation: event.detail === 0
+   }));
    const image = await loadManualSourceImage();
    const canvas = document.createElement('canvas');
    canvas.width = 1;
@@ -433,7 +441,7 @@
        aria-controls="original-preview cutout-preview"
       />
      {:else if removalMode === 'manual'}
-      <button type="button" class="sampler" onclick={(event) => pickBackgroundColor(event)} aria-label="Sample the background colour from the image">
+      <button type="button" class="sampler" onclick={(event) => pickBackgroundColor(event)} aria-label="Sample background colour; keyboard activation samples the image centre">
        <img src={original} alt="" aria-hidden="true"/>
       </button>
      {:else}
@@ -467,7 +475,7 @@
        <button class="primary" onclick={removeWithAi}>Remove background</button>
        <p>AI removal runs locally. The model downloads only after you start removal.</p>
       {:else}
-       <p class="tool-instruction">Click a background area in the image above to sample its colour.</p>
+       <p class="tool-instruction">Click a background area to sample its colour. Keyboard activation samples the image centre.</p>
        {#if manualColor}
         <div class="sample-row">
          <span class="swatch" style="background: rgb({manualColor.r}, {manualColor.g}, {manualColor.b})"></span>
