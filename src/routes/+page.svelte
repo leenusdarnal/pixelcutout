@@ -96,7 +96,6 @@
   worker = undefined;
   manualPreview = '';
   removalMode = nextMode;
-  manualColor = null;
   error = '';
   busy = false;
   aiDownloadProgress = null;
@@ -453,7 +452,7 @@
     </div>
 
 
-    {#if !busy && (removalMode === 'manual' || !cutout)}
+    {#if !busy}
      <div class="tool-panel">
       {#if removalMode === 'ai'}
        <button class="primary" onclick={removeWithAi}>Remove background</button>
