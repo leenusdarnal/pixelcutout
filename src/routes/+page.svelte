@@ -279,11 +279,26 @@
     </div>
     <div class="preview {mode}">
      {#if cutout}
-      <img class="cut" src={cutout} alt="Cutout with transparent background"/>
+      <img id="cutout-preview" class="cut" src={cutout} alt="Result with the background removed"/>
       <div class="before" style="clip-path:inset(0 {100 - Number(split)}% 0 0)">
-       <img src={original} alt="Original"/>
+       <img id="original-preview" src={original} alt="Original image"/>
       </div>
-      <input class="range" type="range" min="0" max="100" bind:value={split} aria-label="Before and after comparison"/>
+      <span class="comparison-label original-label" aria-hidden="true">Original</span>
+      <span class="comparison-label result-label" aria-hidden="true">Background removed</span>
+      <div class="comparison-divider" style="left: {split}%" aria-hidden="true">
+       <span class="comparison-handle">↔</span>
+      </div>
+      <input
+       class="range"
+       type="range"
+       min="0"
+       max="100"
+       step="1"
+       bind:value={split}
+       aria-label="Before and after comparison"
+       aria-valuetext={`Original ${Number(split)}%, background removed ${100 - Number(split)}%`}
+       aria-controls="original-preview cutout-preview"
+      />
      {:else if removalMode === 'manual'}
       <button type="button" class="sampler" onclick={(event) => pickBackgroundColor(event)} aria-label="Sample the background colour from the image">
        <img bind:this={manualImage} src={original} alt="" aria-hidden="true"/>
@@ -404,9 +419,19 @@ main{max-width:820px;margin:auto;padding:70px 22px 48px}
 .preview>img,.before img{max-width:100%;max-height:100%;object-fit:contain}
 .sampler{display:grid;place-items:center;max-width:100%;max-height:100%;padding:0;border:0;background:transparent;cursor:crosshair}
 .sampler img{display:block;max-width:100%;max-height:100%;object-fit:contain}
-.before{position:absolute;inset:0;display:grid;place-items:center;border-right:2px solid #b7f477}
+.before{position:absolute;inset:0;display:grid;place-items:center}
 .before img{width:100%;height:100%;object-fit:contain}
-.range{position:absolute;bottom:8px;width:90%}
+.range{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;z-index:4;cursor:ew-resize;touch-action:pan-y}
+.range::-webkit-slider-runnable-track{height:100%;background:transparent}
+.range::-webkit-slider-thumb{appearance:none;width:44px;height:100%;margin:0;background:transparent;border:0}
+.range::-moz-range-track{height:100%;background:transparent}
+.range::-moz-range-thumb{width:44px;height:100%;background:transparent;border:0;border-radius:0}
+.comparison-divider{position:absolute;top:0;bottom:0;width:2px;transform:translateX(-50%);background:#b7f477;display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none;box-shadow:0 0 0 1px #1115}
+.comparison-handle{display:grid;place-items:center;width:42px;height:42px;border:2px solid #101114;border-radius:50%;background:#b7f477;color:#101114;font-weight:900;font-size:20px;line-height:1;box-shadow:0 2px 12px #0008}
+.comparison-label{position:absolute;top:12px;z-index:2;padding:5px 8px;border-radius:6px;background:#101114c9;color:#fff;font-size:10px;font-weight:750;letter-spacing:.04em;pointer-events:none}
+.original-label{left:12px}
+.result-label{right:12px}
+.preview:has(.range:focus-visible) .comparison-handle{outline:3px solid #fff;outline-offset:4px}
 .busy{position:absolute;inset:0;background:#111c;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:20px;text-align:center}
 .busy small{color:#bbb;max-width:380px;line-height:1.5}
 .spinner{width:30px;height:30px;border:3px solid #ffffff40;border-top-color:#b7f477;border-radius:50%;animation:spin 1s linear infinite}
