@@ -31,7 +31,7 @@ The CSS uses a compact scale based on 4, 8, 12, 16, 24, 32, 40, and 48 pixels. T
 
 The page uses a near-white neutral canvas, dark blue-grey primary text, softer secondary text, and a single blue action color. Green is reserved for privacy/result-positive states; red is reserved for errors. Colors are defined as HSL-based CSS tokens so shades can be tuned consistently.
 
-Normal text should meet a 4.5:1 contrast ratio and large text should meet 3:1. Focus indicators, labels, and text communicate state in addition to color. The result-ready state includes text and an icon, not a colour-only signal.
+Normal text should meet a 4.5:1 contrast ratio and large text should meet 3:1. The muted text token is set to hsl(215 18% 44%) so it remains readable on both the page surface and secondary surface. A dependency-free Node test checks primary/secondary text, the main action, and positive/error state text against their intended backgrounds; these token pairs are all held to at least 4.5:1. Focus indicators, labels, and text communicate state in addition to color. The result-ready state includes text and an icon, not a colour-only signal.
 
 ## Interaction and states
 
