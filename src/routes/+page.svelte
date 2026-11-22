@@ -727,7 +727,7 @@
 :global(button), :global(input) { font: inherit; }
 :global(button) { -webkit-tap-highlight-color: transparent; }
 :global(button:focus-visible), :global(input:focus-visible), :global(a:focus-visible) {
- outline: 3px solid hsl(218 95% 55% / 45%);
+ outline: 3px solid var(--blue-600);
  outline-offset: 3px;
 }
 .app-shell { min-height: 100vh; background: linear-gradient(180deg, hsl(214 34% 99%) 0%, var(--surface) 440px); }
@@ -970,7 +970,7 @@
 }
 .original-label { left: 13px; }
 .result-label { right: 13px; }
-.preview-stage:has(.comparison-range:focus-visible) .comparison-handle { outline: 3px solid hsl(218 95% 55% / 55%); outline-offset: 4px; }
+.preview-stage:has(.comparison-range:focus-visible) .comparison-handle { outline: 3px solid var(--blue-600); outline-offset: 4px; }
 .processing-overlay {
  position: absolute;
  inset: 0;
