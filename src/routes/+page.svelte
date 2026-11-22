@@ -1,7 +1,5 @@
 <script lang="ts">
  import { onMount } from 'svelte';
- import StudioEditor from '$lib/components/StudioEditor.svelte';
- import BatchProcessor from '$lib/components/BatchProcessor.svelte';
 
  type RemovalMode = 'ai' | 'manual';
  type SampleColor = { r: number; g: number; b: number };
@@ -195,15 +193,6 @@
   anchor.click();
  }
 
- async function copy() {
-  try {
-   const blob = await (await fetch(cutout)).blob();
-   await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-  } catch {
-   error = 'Clipboard copy is not supported here. Please download the PNG instead.';
-  }
- }
-
  function reset() {
   worker?.terminate();
   worker = undefined;
@@ -238,24 +227,12 @@
  </header>
  <main>
   <section class="hero">
-   <small>PRIVATE BY DESIGN · TWO WAYS TO REMOVE BACKGROUNDS</small>
+   <small>PRIVATE BY DESIGN · ONE IMAGE AT A TIME</small>
    <h1>Make your subject<br/><i>stand out.</i></h1>
-   <p>Choose automatic AI removal or a no-AI colour tool. Your photos stay on your device.</p>
+   <p>Remove backgrounds automatically with AI, or use manual colour removal for simple backgrounds.</p>
   </section>
 
-  <section class="method">
-   <h2>Choose your method</h2>
-   <div class="method-options">
-    <button class:active={removalMode === 'ai'} aria-pressed={removalMode === 'ai'} onclick={() => setRemovalMode('ai')}>
-     <strong>AI automatic</strong>
-     <small>Automatically finds the main subject. The model downloads only when you use it.</small>
-    </button>
-    <button class:active={removalMode === 'manual'} aria-pressed={removalMode === 'manual'} onclick={() => setRemovalMode('manual')}>
-     <strong>Without AI</strong>
-     <small>Choose a background colour yourself. Best for plain or simple backgrounds.</small>
-    </button>
-   </div>
-  </section>
+  
 
   {#if !original}
    <section class="drop" aria-label="Image upload drop zone" ondragover={(event) => event.preventDefault()} ondrop={drop}>
@@ -309,14 +286,13 @@
     </div>
 
     {#if cutout}
-     <StudioEditor src={cutout} onError={(message) => error = message}/>
     {/if}
 
     {#if !cutout && !busy}
      <div class="tool-panel">
       {#if removalMode === 'ai'}
-       <button class="primary" onclick={removeWithAi}>Remove background with AI</button>
-       <p>On first use, the AI model must be downloaded. A percentage indicator will show the download progress.</p>
+       <button class="primary" onclick={removeWithAi}>Remove background</button>
+       <p>AI removal runs locally. The model downloads only after you start removal.</p>
       {:else}
        <p class="tool-instruction">Click a background area in the image above to sample its colour.</p>
        {#if manualColor}
@@ -333,9 +309,16 @@
         <small class="helper">Increase tolerance to remove more shades of the selected colour. Matching colours inside the subject may also become transparent.</small>
         <button class="primary" onclick={removeWithoutAi}>Remove selected colour</button>
        {:else}
-        <small class="helper">This method does not download an AI model. It works best when the background has a fairly uniform colour.</small>
+        <small class="helper">Manual colour removal works best when the background has a fairly uniform colour.</small>
        {/if}
       {/if}
+      <button
+       class="link advanced-toggle"
+       aria-expanded={removalMode === 'manual'}
+       onclick={() => setRemovalMode(removalMode === 'ai' ? 'manual' : 'ai')}
+      >
+       {removalMode === 'manual' ? 'Use AI removal instead' : 'Advanced: manual colour removal'}
+      </button>
      </div>
     {/if}
 
@@ -350,18 +333,16 @@
     {#if cutout}
      <div class="actions">
       <button class="primary" onclick={download}>Download PNG</button>
-      <button class="secondary" onclick={copy}>Copy cutout</button>
      </div>
     {/if}
    </section>
   {/if}
 
   {#if error}<p class="error" role="alert">{error}</p>{/if}
-  <BatchProcessor />
 
   <aside>
    <b>Your images never leave your device</b>
-   <p>Both methods process image pixels locally in your browser. AI mode downloads model files when needed, but your photo is never sent to the model host or an application server. Without AI, PixelCutout removes colours you select and does not download model files.</p>
+   <p>Image pixels are processed on this device and are never uploaded. AI mode downloads model and runtime files from public hosts after you click Remove background; those downloads do not contain your photo. Manual colour removal stays entirely on-device and does not load the AI model.</p>
   </aside>
  </main>
  <footer>PIXELCUTOUT <span>Private image editing, powered by your device.</span></footer>
@@ -380,19 +361,12 @@ main{max-width:820px;margin:auto;padding:70px 22px 48px}
 .hero h1{font-size:clamp(42px,7vw,68px);line-height:1;letter-spacing:-3px;margin:18px 0}
 .hero i{font-style:normal;color:#b7f477}
 .hero p,.drop p{color:#aaa;font-size:14px;line-height:1.6}
-.method{margin:0 0 18px}
-.method h2{font-size:13px;color:#ddd;margin:0 0 10px}
-.method-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.method-options button{background:#1b1c22;border:1px solid #ffffff20;color:#f5f4f0;border-radius:12px;padding:14px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:7px}
-.method-options button.active{border-color:#b7f477;box-shadow:inset 0 0 0 1px #b7f477}
-.method-options strong{font-size:14px}
-.method-options small{font-size:11px;color:#aaa;line-height:1.5}
 .drop{min-height:310px;border:1px dashed #777;border-radius:20px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#ffffff05}
 .upload{width:48px;height:48px;background:#b7f477;color:#111;border-radius:14px;display:grid;place-items:center;font-size:27px}
 .drop h2{margin:16px 0 0}
 .drop small{color:#888;margin-top:18px}
 .drop .hint{margin-top:8px;color:#aab78f}
-.primary,.secondary{border:0;border-radius:10px;padding:12px 20px;font-weight:750;cursor:pointer}
+.primary{border:0;border-radius:10px;padding:12px 20px;font-weight:750;cursor:pointer}
 .primary{background:#b7f477;color:#12150e}
 .drop .primary{margin:12px}
 .editor{background:#1b1c22;border:1px solid #ffffff20;border-radius:16px;padding:14px}
@@ -417,6 +391,7 @@ main{max-width:820px;margin:auto;padding:70px 22px 48px}
 .tool-panel{margin:12px 2px 18px;padding:14px;background:#ffffff08;border:1px solid #ffffff12;border-radius:12px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
 .tool-panel>p{font-size:12px;color:#aaa;line-height:1.5;margin:0}
 .tool-panel .tool-instruction{color:#eee}
+.advanced-toggle{font-size:12px;text-align:left;padding:2px 0}
 .sample-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12px;color:#ddd}
 .swatch{display:inline-block;width:22px;height:22px;border:1px solid #ffffff80;border-radius:6px}
 .tolerance-label{width:100%;display:flex;justify-content:space-between;color:#ddd;font-size:12px}
@@ -426,12 +401,11 @@ main{max-width:820px;margin:auto;padding:70px 22px 48px}
 .modes button{background:none;border:1px solid #ffffff22;color:#aaa;border-radius:6px;padding:6px 9px;margin-left:5px;cursor:pointer}
 .modes button.active{border-color:#b7f477;color:#b7f477}
 .actions{display:flex;justify-content:center;gap:10px;padding:10px}
-.secondary{background:#2c2d34;color:white;border:1px solid #ffffff25}
 aside{margin:25px 0;color:#b7f477}
 aside b{color:#eee;font-size:13px}
 aside p{font-size:12px;line-height:1.6;color:#999}
 .error{color:#ff9b9b;text-align:center}
 footer{border-top:1px solid #ffffff15;padding:20px 5vw;color:#777;font-size:10px;letter-spacing:1px}
 footer span{float:right;letter-spacing:0}
-@media(max-width:560px){main{padding-top:48px}.hero h1{letter-spacing:-2px}.method-options{grid-template-columns:1fr}footer span{float:none;display:block;margin-top:8px}}
+@media(max-width:560px){main{padding-top:48px}.hero h1{letter-spacing:-2px}footer span{float:none;display:block;margin-top:8px}}
 </style>
