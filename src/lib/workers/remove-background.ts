@@ -103,27 +103,39 @@ async function runRemoval(file: Blob) {
   }
 }
 
-function toPngBlob(rawImage: any): Promise<Blob> {
+async function toPngBlob(rawImage: any): Promise<Blob> {
   if (!rawImage || !Number.isInteger(rawImage.width) || !Number.isInteger(rawImage.height) || !rawImage.data) {
     throw new Error('The background-removal model returned an unsupported image.');
   }
 
-  const image = rawImage.rgba();
-  const canvas = new OffscreenCanvas(image.width, image.height);
-  const context = canvas.getContext('2d');
+  let canvas: OffscreenCanvas | null = null;
+  let pixels: ImageData | null = null;
 
-  if (!context) {
-    throw new Error('This browser cannot create the PNG preview. Try a recent version of Chrome, Edge, or Firefox.');
+  try {
+    const image = rawImage.rgba();
+    canvas = new OffscreenCanvas(image.width, image.height);
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      throw new Error('This browser cannot create the PNG preview. Try a recent version of Chrome, Edge, or Firefox.');
+    }
+
+    pixels = new ImageData(
+      new Uint8ClampedArray(image.data),
+      image.width,
+      image.height
+    );
+
+    context.putImageData(pixels, 0, 0);
+    return await canvas.convertToBlob({ type: 'image/png' });
+  } finally {
+    // The returned Blob owns its encoded bytes; release the temporary RGBA and canvas buffers.
+    pixels?.data.fill(0);
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
   }
-
-  const pixels = new ImageData(
-    new Uint8ClampedArray(image.data),
-    image.width,
-    image.height
-  );
-
-  context.putImageData(pixels, 0, 0);
-  return canvas.convertToBlob({ type: 'image/png' });
 }
 
 async function removeSampledColor(
@@ -132,9 +144,11 @@ async function removeSampledColor(
   tolerance: number
 ): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
+  let canvas: OffscreenCanvas | null = null;
+  let image: ImageData | null = null;
 
   try {
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
     const context = canvas.getContext('2d', { willReadFrequently: true });
 
     if (!context) {
@@ -142,11 +156,17 @@ async function removeSampledColor(
     }
 
     context.drawImage(bitmap, 0, 0);
-    const image = context.getImageData(0, 0, bitmap.width, bitmap.height);
+    image = context.getImageData(0, 0, bitmap.width, bitmap.height);
     removeColorPixels(image.data, color, tolerance);
     context.putImageData(image, 0, 0);
     return await canvas.convertToBlob({ type: 'image/png' });
   } finally {
+    // The encoded result is returned as a Blob; clear temporary uncompressed pixel memory.
+    image?.data.fill(0);
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
     bitmap.close();
   }
 }
