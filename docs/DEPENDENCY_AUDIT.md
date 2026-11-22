@@ -1,16 +1,17 @@
 # PixelCutout dependency audit
 
 Captured: 2026-11-22  
+Updated after PR #19 merged: Transformers.js is now 4.3.2 and Svelte is 5.57.3.  
 Source: `package.json`, `package-lock.json` (lockfile version 3), current source imports, and successful CI build.
 
 ## Direct dependencies
 
 | Package | Pinned version | Category | Observed purpose | Decision |
 |---|---:|---|---|---|
-| `@huggingface/transformers` | 3.8.1 | Runtime | Imported dynamically by `src/lib/workers/remove-background.ts` for AI background removal | Keep; core feature. Benchmark alternatives before replacing it. |
+| `@huggingface/transformers` | 4.3.2 | Runtime | Imported dynamically by `src/lib/workers/remove-background.ts` for AI background removal | Keep; core feature. Benchmark alternatives before replacing it. |
 | `@sveltejs/adapter-static` | 3.0.8 | Runtime/build | Emits the static site for deployment | Keep; matches static hosting. |
 | `@sveltejs/kit` | 2.20.8 | Runtime/build | App framework, routing, build integration | Keep; no framework migration. |
-| `svelte` | 5.25.7 | Runtime | UI component framework | Keep. |
+| `svelte` | 5.57.3 | Runtime | UI component framework | Keep. |
 | `@sveltejs/vite-plugin-svelte` | 5.0.3 | Development | Svelte compilation in Vite | Keep; required for current build. |
 | `svelte-check` | 4.1.4 | Development | Svelte and TypeScript diagnostics | Keep; part of CI verification. |
 | `typescript` | 5.8.2 | Development | TypeScript language/compiler support | Keep; source and worker code use TypeScript. |
@@ -49,3 +50,8 @@ The header-validation helper is covered by `src/lib/image/image-dimensions.test.
 ## Removal decision
 
 No direct dependency was removed in this audit. Each of the eight direct dependencies has a clear role in the current source/build. Removing a package without an alternative would break the toolchain or primary AI workflow. The first reduction was made by removing out-of-scope application code, not by changing the framework or AI runtime.
+
+
+## Security-advisory follow-up
+
+A previous review reported 4 npm audit findings (1 low, 1 moderate, 2 high). This count has not been independently re-run against the current lockfile in this documentation-only cleanup; treat it as an unverified follow-up, not a current audit result. Re-run `npm audit` against the merged lockfile and assess each advisory's affected dependency, fix availability, and runtime relevance before changing dependencies.
