@@ -93,20 +93,20 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P5-01 | Expose manual colour removal under Advanced | Hidden from the primary path until requested | Open | |
-| P5-02 | Sample colour and adjust tolerance with preview | Changes are previewed before application | Open | |
-| P5-03 | Apply/reset manual removal without destroying AI result | Reset returns to AI result/original; no cumulative destructive edits | Open | |
-| P5-04 | Keep existing colour-removal tests and add edge cases | Tests cover tolerance, transparency, and reset behaviour | Open | |
+| P5-01 | Expose manual colour removal under Advanced | Hidden from the primary path until requested | Done | Manual colour removal remains behind the **Advanced: manual colour removal** toggle; AI remains the primary Remove background action. Manual mode does not load Transformers.js or download AI model assets. Verified in production build [READY](https://vercel.com/leenusdarnals-projects/pixelcutout/9kQDwiUHZuTncCpqPgLpZLMC5DY1) for commit `c6c8ac082a40262ea00bc4fc358bcf29b09473ae`. |
+| P5-02 | Sample colour and adjust tolerance with preview | Changes are previewed before application | Done | Click-to-sample source colour, adjustable tolerance, and a 120 ms debounced preview capped at 512 px on the longest side. Preview uses a temporary local canvas; applying still uses the original image at full resolution. Preview output is not downloadable until the same colour/tolerance is applied. No dependency added. Verified in production build [READY](https://vercel.com/leenusdarnals-projects/pixelcutout/9kQDwiUHZuTncCpqPgLpZLMC5DY1) for commit `c6c8ac082a40262ea00bc4fc358bcf29b09473ae`. |
+| P5-03 | Apply/reset manual removal without destroying AI result | Reset returns to AI result/original; no cumulative destructive edits | Done | AI output (`cutout`) and full-resolution manual output (`manualResult`) are stored independently. Manual runs start from the original source, **Choose again** returns to the original for sampling, and switching modes retains both committed outputs. A reduced preview is replaced only when a full-resolution manual result completes. Verified in production build [READY](https://vercel.com/leenusdarnals-projects/pixelcutout/9kQDwiUHZuTncCpqPgLpZLMC5DY1) for commit `c6c8ac082a40262ea00bc4fc358bcf29b09473ae`. |
+| P5-04 | Keep existing colour-removal tests and add edge cases | Tests cover tolerance, transparency, and reset behaviour | Done | Nine colour-removal tests cover exact matches, tolerance boundaries/feathering, preserved foreground alpha/RGB, already-transparent pixels, tolerance clamping, and invalid input. Two new regression tests verify RGB channels are unchanged by feathering and alpha is never increased; resource lifecycle tests cover worker termination and URL cleanup. Full build reports 30/30 tests passing. [READY deployment](https://vercel.com/leenusdarnals-projects/pixelcutout/9kQDwiUHZuTncCpqPgLpZLMC5DY1). |
 
 ### Phase 6 — QA, documentation, and release
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P6-01 | Run type checks, unit tests, and production build | All required CI checks pass | Done | Latest validated production build on `main`: 28 tests passed, 0 failed; `svelte-check` 0 errors/0 warnings; Vite client/server build and static adapter completed. Deployment [READY](https://vercel.com/leenusdarnals-projects/pixelcutout/5AFiGXtkRXWApsWvSdsCWkMAaLKk) for commit `e045a79731c0e8db5ab2c1d30de04030d473c87f`. Vercel/npm environment warnings remain informational and did not fail the build. |
+| P6-01 | Run type checks, unit tests, and production build | All required CI checks pass | Done | Latest validated production build on `main`: 30 tests passed, 0 failed; `svelte-check` 0 errors/0 warnings; Vite client/server build and static adapter completed. Deployment [READY](https://vercel.com/leenusdarnals-projects/pixelcutout/9kQDwiUHZuTncCpqPgLpZLMC5DY1) for commit `c6c8ac082a40262ea00bc4fc358bcf29b09473ae`. Vercel/npm environment warnings remain informational and did not fail the build. |
 | P6-02 | Test desktop and mobile, including constrained memory | No crash or unusable state on supported test devices | Open | |
 | P6-03 | Verify privacy claims with browser network inspection | No image pixels leave the browser | Open | |
 | P6-04 | Verify PNG dimensions, alpha, and edge quality | Output meets benchmark acceptance criteria | Open | |
-| P6-05 | Update README with workflow, limits, privacy, and model details | Documentation matches shipped behaviour | Open | |
+| P6-05 | Update README with workflow, limits, privacy, and model details | Documentation matches shipped behaviour | Done | README now documents the advanced manual sample/tolerance flow, 512 px preview limit, full-resolution apply step, independent AI/manual results, and the download guard. Existing file limits, privacy boundaries, model provenance, runtime fallback, and lightweight scope are retained. |
 | P6-06 | Deploy preview and verify; record Vercel quota issues separately | Preview is verified; quota failures are not mislabelled as app failures | Open | |
 
 ## 5. Model benchmark scorecard
