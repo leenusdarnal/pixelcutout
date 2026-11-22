@@ -44,20 +44,20 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P0-01 | Record current branch, commit, install/build/test commands, and CI status | Baseline is reproducible from a clean checkout | Blocked | Recorded in `docs/BASELINE.md`; latest CI failed at dependency installation, so clean-checkout reproducibility is not yet verified. |
-| P0-02 | Record current bundle size and identify largest initial-load assets | Baseline numbers captured before changes | Open | |
-| P0-03 | Inventory current dependencies and identify removable/duplicate packages | No dependency removed without checking usage | Open | |
-| P0-04 | Confirm privacy boundary for image pixels and model downloads | Docs/UI clearly distinguish local pixels from model asset downloads | Open | |
+| P0-01 | Record current branch, commit, install/build/test commands, and CI status | Baseline is reproducible from a clean checkout | Done | Clean `npm ci` and `npm run build` passed on Node 22 in CI run [#24](https://github.com/leenusdarnal/pixelcutout/actions/runs/45001169884). |
+| P0-02 | Record current bundle size and identify largest initial-load assets | Baseline numbers captured before changes | Done | Pre-simplification Vite sizes recorded in `docs/BASELINE.md`; worker chunk 902.08 kB and ONNX WASM 21,596.02 kB are emitted worker/runtime assets, not assumed initial-route downloads. |
+| P0-03 | Inventory current dependencies and identify removable/duplicate packages | No dependency removed without checking usage | Done | Direct and key transitive dependency audit recorded in `docs/DEPENDENCY_AUDIT.md`; no direct package was removed. |
+| P0-04 | Confirm privacy boundary for image pixels and model downloads | Docs/UI clearly distinguish local pixels from model asset downloads | Done | UI, worker and service-worker code reviewed; local image processing and separate model downloads are documented. Live browser network inspection remains P2-05. |
 
 ### Phase 1 — Focused app flow
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P1-01 | Simplify landing page to one-image upload/drop zone | Keyboard and pointer upload work; one image is shown | Open | |
-| P1-02 | Keep AI removal as the primary action; start only on click | No model/runtime fetch or inference before click | Open | |
-| P1-03 | Remove batch-processing UI from first-release path | No batch queue or ZIP workflow is exposed | Open | |
-| P1-04 | Remove advanced Studio features not in first-release scope | No brush editor, crop, background replacement, shadows, or extra export formats in core flow | Open | |
-| P1-05 | Add clear loading, success, empty, and error states | State transitions are understandable and recoverable | Open | |
+| P1-01 | Simplify landing page to one-image upload/drop zone | Keyboard and pointer upload work; one image is shown | Done | One-file picker, keyboard-operable Select image button, drag/drop and image paste retained in `src/routes/+page.svelte`; browser device QA remains in P6-02. |
+| P1-02 | Keep AI removal as the primary action; start only on click | No model/runtime fetch or inference before click | Done | AI is the single primary action; manual colour removal is under Advanced. Worker creation starts from the removal action and Transformers.js is imported only in the AI worker path. |
+| P1-03 | Remove batch-processing UI from first-release path | No batch queue or ZIP workflow is exposed | Done | Removed `BatchProcessor`, ZIP writer, and ZIP-specific tests. |
+| P1-04 | Remove advanced Studio features not in first-release scope | No brush editor, crop, background replacement, shadows, or extra export formats in core flow | Done | Removed `StudioEditor`, brush/crop/background/shadow features, clipboard export, and unused alpha-feather utility/tests; retained before/after preview and PNG export. |
+| P1-05 | Add clear loading, success, empty, and error states | State transitions are understandable and recoverable | Done | Empty/upload, AI download/processing progress, cancel, result, and error states remain in the focused flow. CI verification pending for this commit. |
 
 ### Phase 2 — Image safety and resource lifecycle
 
