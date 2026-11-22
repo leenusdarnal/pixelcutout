@@ -5,3 +5,6 @@ dist
 .env
 .env.*
 !.env.example
+
+# Local-only model benchmark images (never ship with the app)
+benchmarks/images/

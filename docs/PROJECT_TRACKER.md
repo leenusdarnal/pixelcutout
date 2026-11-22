@@ -73,7 +73,7 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P3-01 | Define a small representative benchmark set | Includes people/hair, pets/fur, products, everyday objects, fine edges, and difficult backgrounds | Open | |
+| P3-01 | Define a small representative benchmark set | Includes people/hair, pets/fur, products, everyday objects, fine edges, and difficult backgrounds | In progress | The 16-case matrix and scoring protocol are defined in `docs/MODEL_BENCHMARK.md`. The actual locally sourced image files, usage rights, and SHA-256 manifest still need to be populated before model comparisons. |
 | P3-02 | Benchmark current model against viable general-purpose alternatives | Quality, model size, cold-start, inference time, memory, WebGPU/WASM, and licensing recorded | Open | |
 | P3-03 | Select the smallest model that meets quality targets | Decision includes measured trade-offs; no redundant model shipped | Open | |
 | P3-04 | Keep inference off the main thread | UI remains responsive during inference on supported devices | Open | |
