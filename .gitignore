@@ -8,3 +8,4 @@ dist
 
 # Local-only model benchmark images (never ship with the app)
 benchmarks/images/
+build/

@@ -1,83 +1,73 @@
 # PixelCutout dependency audit
 
-Captured: 2026-11-22  
-Reviewed against the decision to plan a separate SvelteKit major migration. The current SvelteKit 2 stack remains in production until the migration gates in `docs/SVELTEKIT_MIGRATION_PLAN.md` pass.  
-Source: current `package.json`, complete npm v3 lockfile, clean install, production build, and `npm audit` results.
+Captured: 2026-11-22
+Current baseline after the SvelteKit 3 migration implementation on the dedicated review branch. The changes are not yet merged; see the execution and remaining preview gates in the SvelteKit migration record.
+Source: package manifest, npm v3 lockfile, clean npm install, production build, and npm audit results.
 
-## Direct dependencies
+## Current direct dependencies
 
-| Package | Pinned version | Category | Observed purpose | Decision |
-|---|---:|---|---|---|
-| `@huggingface/transformers` | 4.3.2 | Runtime | Dynamically imported by `src/lib/workers/remove-background.ts` for AI background removal | Keep; core feature. Benchmark alternatives before replacing it. |
-| `svelte` | 5.57.3 | Runtime | UI component framework | Keep. |
-| `@sveltejs/adapter-static` | 3.0.11 | Development/build | Emits the static site for deployment | Keep; matches static hosting. |
-| `@sveltejs/kit` | 2.70.4 | Development/build | App framework, routing, and build integration | Keep on the approved SvelteKit 2 line; a major framework migration is deferred. |
-| `@sveltejs/vite-plugin-svelte` | 5.0.3 | Development | Svelte compilation in Vite | Keep; part of the current SvelteKit 2 toolchain. |
-| `svelte-check` | 4.7.8 | Development | Svelte and TypeScript diagnostics | Keep; part of CI verification. |
-| `typescript` | 5.8.2 | Development | TypeScript language/compiler support | Keep; source and worker code use TypeScript. |
-| `vite` | 6.4.6 | Development | Dev server and production bundler | Keep on the compatible Vite 6 line. |
-
-Direct dependency count: **2 runtime + 6 development**. SvelteKit and the static adapter are build-time tools for this statically deployed application, so they are declared as development dependencies rather than production dependencies.
-
-## Lockfile and reproducibility
-
-- Node: **22.23.5**; npm: **10.9.9**.
-- Lockfile: npm **lockfileVersion 3**, regenerated from the exact committed manifest using the same npm version as GitHub Actions.
-- The lockfile contains **176 package entries including the root project entry** (87,869 bytes).
-- A clean `npm ci --package-lock=true --no-audit --no-fund --onnxruntime-node-install-cuda=skip` completed successfully.
-- CI verifies both manifests and the lockfile structure before installing.
-
-## Important transitive packages
-
-| Package | Locked version | Role / observation | Decision |
+| Package | Pinned version | Category | Purpose |
 |---|---:|---|---|
-| `onnxruntime-web` | 1.31.0-dev.20260914-8d85527a0 | Browser ONNX execution runtime used by Transformers.js; contributes a large WASM asset | Keep for now; measure model/runtime alternatives in Phase 3. |
-| `onnxruntime-node` | 1.30.0 | Node binding brought in by Transformers.js; CI skips the optional CUDA download | Do not add it as a direct dependency. Revisit only if server-side Node inference becomes a requirement. |
-| `sharp` | 0.35.5 | Transformers.js transitive dependency; not imported by application source | Do not remove by hand from the lockfile. Reassess the runtime dependency graph when evaluating AI alternatives. |
-| `cookie` | 0.6.0 | Transitive SvelteKit dependency; currently reported as a low-severity development-tool advisory | Leave to the framework's compatible dependency update rather than forcing an out-of-range override. |
+| @huggingface/transformers | 4.3.2 | Runtime | Dynamically imported by the AI worker for background removal |
+| svelte | 5.57.3 | Runtime | UI component framework |
+| @sveltejs/adapter-static | 4.0.1 | Development/build | Emits the static site for deployment |
+| @sveltejs/kit | 3.4.0 | Development/build | App framework, routing, and build integration |
+| @sveltejs/vite-plugin-svelte | 7.3.1 | Development | Svelte compilation in Vite |
+| svelte-check | 4.7.8 | Development | Svelte and TypeScript diagnostics |
+| typescript | 6.0.3 | Development | TypeScript compiler |
+| vite | 8.3.8 | Development | Dev server and production bundler |
 
-## Security audit (2026-11-22)
+Direct dependency count remains **2 runtime + 6 development**. No runtime package was added for this migration. SvelteKit and adapter-static remain build-time tools for this static application.
 
-The regenerated dependency tree was checked with npm 10.9.9.
+## Runtime requirements and compatibility
 
-| Audit scope | Critical | High | Moderate | Low | Total |
-|---|---:|---:|---:|---:|---:|
-| Full dependency tree | 0 | 1 | 0 | 2 | 3 |
-| Production dependencies (`npm audit --omit=dev`) | 0 | 0 | 0 | 0 | 0 |
+- Node.js: **>=22.17.0** (tested with **22.23.5**); npm: **10.9.9**.
+- SvelteKit 3.4.0 peer requirements: Node >=22.17, Svelte ^5.57.1, TypeScript ^6, Vite ^8.0.12, and @sveltejs/vite-plugin-svelte ^7.
+- The pinned Svelte 5.57.3, TypeScript 6.0.3, Vite 8.3.8, and plugin 7.3.1 meet those ranges.
+- The committed npm lockfile uses lockfileVersion 3 and is regenerated from the exact pinned manifest.
+- CI continues to use Node 22, which satisfies the framework minimum; the package manifest now records the minimum supported Node version.
 
-The remaining findings are in development/build dependencies:
+## Security audit
 
-| Package | Severity | Affected range reported by npm | Fix npm offers | Assessment |
-|---|---|---|---|---|
-| `@sveltejs/kit@2.70.4` | High | `<=3.1.0` | `@sveltejs/kit@3.4.0` (major) | The compatible SvelteKit 2 line has no fix offered by the current audit data. |
-| `@sveltejs/adapter-static@3.0.11` | Low | `1.0.0-next.0 - 3.0.11` | `@sveltejs/adapter-static@4.0.1` (major) | Adapter 4 requires SvelteKit 3. |
-| `cookie@0.6.0` | Low | `<0.7.0` | Resolved through `@sveltejs/kit@3.4.0` (major) | Avoid an out-of-range forced transitive override. |
+| Audit | Result |
+|---|---|
+| npm audit --omit=dev --audit-level=low | **0 vulnerabilities** |
+| Full npm audit | **0 vulnerabilities** |
 
-**Interpretation:** npm reports zero vulnerabilities in the production dependency tree. The three remaining findings are present in the development/build toolchain; this does not mean the toolchain is vulnerability-free, but these packages are not part of the production dependency tree for the static deployment.
+The pre-migration SvelteKit 2 dependency tree had three reported findings: one high finding against SvelteKit 2.70.4, one low finding against adapter-static 3.0.11, and one low finding in cookie 0.6.0. After moving to SvelteKit 3.4.0 and adapter-static 4.0.1 and regenerating the lockfile, the full audit reports zero findings. No forced transitive override was added for this migration.
 
-**Migration decision:** plan a separate SvelteKit 3 + adapter-static 4 major migration to address the documented framework/build-tool advisories and move to a supported toolchain. This is a plan only: the current SvelteKit 2 application remains unchanged until compatibility, clean-install, audit, build, test, static-output, preview-deployment, and rollback gates in `docs/SVELTEKIT_MIGRATION_PLAN.md` pass. Confirm supported package versions and advisory status at implementation time; do not assume the versions listed in this audit remain the latest. CI continues to block on production dependency advisories and reports the full dependency audit for visibility.
+CI continues to block on production dependency advisories and reports the full dependency audit for visibility.
+
+## Build footprint and static output
+
+The pre-migration production build emitted a 598.72 KB worker chunk and a 26,861.78 KB ONNX Runtime WASM asset. The SvelteKit 3/Vite 8 build emits a 582.62 KB worker chunk and a 26,861.77 KB WASM asset. The large runtime remains a worker asset and is not added as a new application-entry dependency. These figures are build-output measurements, not a browser network test.
+
+The adapter-static 4 production build writes the site to build/, including index.html, 404.html, manifest.webmanifest, the app icon, and service-worker.js. Vercel outputDirectory remains build/. No server adapter or image-processing backend was introduced.
 
 ## Local modules and lightweight scope
 
-The following local modules remain in the focused first-release path:
+The focused first-release modules remain:
 
-- Manual colour removal: `src/lib/image/remove-color.js`.
-- Image header validation: `src/lib/image/image-dimensions.js` reads PNG/JPEG/WebP dimensions from a bounded header slice and is dynamically imported only after file selection; it adds no package dependency.
-- The background-removal worker: `src/lib/workers/remove-background.ts`.
-- Manual colour tests: `src/lib/image/remove-color.test.mjs`.
+- Manual colour removal: src/lib/image/remove-color.js.
+- Image header validation: src/lib/image/image-dimensions.js; reads bounded PNG/JPEG/WebP headers and adds no package.
+- Background-removal worker: src/lib/workers/remove-background.ts.
+- Manual colour tests: src/lib/image/remove-color.test.mjs.
 
-No batch/ZIP, separate editor, state-management, or UI component package is needed for the current first-release scope. The worker is created only when a removal action starts, and Transformers.js is dynamically imported only for AI removal.
+The worker is created only when a removal action starts, and Transformers.js remains dynamically imported only in the AI worker path. The service worker now imports version from $app/env, manifest asset metadata from $app/manifest, and resolves paths through $app/paths. It retains the existing same-origin-only handling and does not cache remote model downloads or user-selected image data.
+
+No batch/ZIP, separate editor, state-management, analytics, or UI component package was added.
 
 ## Validation
 
-Validated from a clean checkout on Node 22.23.5 / npm 10.9.9:
+Validated in a clean Node 22.23.5 / npm 10.9.9 environment:
 
-- `npm ci --package-lock=true --no-audit --no-fund --onnxruntime-node-install-cuda=skip` — passed.
-- `npm run build` — passed.
+- npm ci --package-lock=true --no-audit --no-fund --onnxruntime-node-install-cuda=skip — passed.
+- npm run build — passed.
 - Unit tests — **34 passed, 0 failed**.
-- `svelte-check` — **0 errors, 0 warnings**.
-- Vite 6.4.6 production build and static adapter — passed.
-- `npm audit --omit=dev` — **0 vulnerabilities**.
-- Full `npm audit` — **3 development/build findings** as detailed above.
+- svelte-check — **0 errors, 0 warnings**.
+- Vite 8.3.8 production client/server/service-worker builds — passed.
+- adapter-static 4.0.1 — wrote the static site to build/.
+- npm audit --omit=dev --audit-level=low — **0 vulnerabilities**.
+- Full npm audit — **0 vulnerabilities**.
 
-No application feature, image-processing mode, or AI model has been changed by this dependency cleanup.
+The application workflow, model, and image-processing logic were not otherwise changed. Browser network inspection and desktop/mobile preview checks remain outstanding and are tracked in docs/SVELTEKIT_MIGRATION_PLAN.md.
