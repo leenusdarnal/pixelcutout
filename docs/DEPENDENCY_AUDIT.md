@@ -1,7 +1,7 @@
 # PixelCutout dependency audit
 
 Captured: 2026-11-22  
-Reviewed against the project tracker decision to retain the SvelteKit 2 stack and avoid a framework migration.  
+Reviewed against the decision to plan a separate SvelteKit major migration. The current SvelteKit 2 stack remains in production until the migration gates in `docs/SVELTEKIT_MIGRATION_PLAN.md` pass.  
 Source: current `package.json`, complete npm v3 lockfile, clean install, production build, and `npm audit` results.
 
 ## Direct dependencies
@@ -55,7 +55,7 @@ The remaining findings are in development/build dependencies:
 
 **Interpretation:** npm reports zero vulnerabilities in the production dependency tree. The three remaining findings are present in the development/build toolchain; this does not mean the toolchain is vulnerability-free, but these packages are not part of the production dependency tree for the static deployment.
 
-**Migration decision:** the project tracker explicitly says to keep the existing SvelteKit + Svelte + TypeScript stack and not introduce a framework migration. Clearing all remaining findings currently requires SvelteKit 3 and adapter-static 4, plus a major toolchain/configuration migration. That work is deferred rather than silently overriding the agreed project decision. Revisit it as a separate, explicitly approved migration. CI now blocks on production dependency advisories and reports the full dependency audit for visibility.
+**Migration decision:** plan a separate SvelteKit 3 + adapter-static 4 major migration to address the documented framework/build-tool advisories and move to a supported toolchain. This is a plan only: the current SvelteKit 2 application remains unchanged until compatibility, clean-install, audit, build, test, static-output, preview-deployment, and rollback gates in `docs/SVELTEKIT_MIGRATION_PLAN.md` pass. Confirm supported package versions and advisory status at implementation time; do not assume the versions listed in this audit remain the latest. CI continues to block on production dependency advisories and reports the full dependency audit for visibility.
 
 ## Local modules and lightweight scope
 
