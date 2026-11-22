@@ -125,6 +125,6 @@ Verified in GitHub Actions run [#100](https://github.com/leenusdarnal/pixelcutou
 - Svelte/TypeScript: **0 errors, 0 warnings**.
 - Vite production build: **passed** using Vite 6.4.6 and SvelteKit 2.70.4.
 - The audit changed from 4 findings (1 low, 1 moderate, 2 high) before the targeted updates to 2 findings (1 low, 1 high; no moderate or critical) after the `cookie@0.7.2` override and targeted framework/dev-tool upgrades.
-- The CI run regenerated the lockfile, installed that generated file, ran the audit, and built the application. The committed-lockfile-only verification is a separate final check after the temporary regeneration/export steps are removed.
+- Run #100 regenerated the lockfile, installed it, ran the audit, and built the application. After the complete generated lockfile was committed and temporary regeneration/export steps were removed, clean-checkout run [#108](https://github.com/leenusdarnal/pixelcutout/actions/runs/45015590490) passed the manifest check, normal `npm ci` against the committed file, audit report, 34 unit tests, Svelte/TypeScript check (0 errors, 0 warnings), and production build. The Vercel status check for the PR head also passed.
 
 See `docs/DEPENDENCY_AUDIT.md` for package versions and the two conditional remaining findings. This dependency repair does not replace the pending mobile memory, live network privacy, representative-image output, or real-device QA checks in `docs/PROJECT_TRACKER.md`.
