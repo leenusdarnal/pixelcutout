@@ -50,3 +50,24 @@ test('rejects invalid pixel buffers and colours', () => {
   assert.throws(() => removeColorPixels(new Uint8ClampedArray([1, 2, 3]), green), /RGBA/);
   assert.throws(() => removeColorPixels(new Uint8ClampedArray([1, 2, 3, 4]), { r: 256, g: 0, b: 0 }), /RGB/);
 });
+
+test('feathering changes alpha only and preserves the pixel RGB channels', () => {
+  const pixels = new Uint8ClampedArray([40, 254, 2, 190]);
+  removeColorPixels(pixels, green, 50);
+
+  assert.deepEqual([...pixels.slice(0, 3)], [40, 254, 2]);
+  assert.ok(pixels[3] > 0 && pixels[3] < 190);
+});
+
+test('never increases partially transparent foreground alpha', () => {
+  const pixels = new Uint8ClampedArray([
+    0, 255, 0, 90,
+    40, 255, 0, 140,
+    255, 0, 0, 64
+  ]);
+  removeColorPixels(pixels, green, 50);
+
+  assert.equal(pixels[3], 0);
+  assert.ok(pixels[7] >= 0 && pixels[7] <= 140);
+  assert.equal(pixels[11], 64);
+});
