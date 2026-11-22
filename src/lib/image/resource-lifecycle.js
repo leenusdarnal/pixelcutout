@@ -23,6 +23,7 @@ export function releaseImageResources({
     terminatedWorker = true;
   }
 
+  /** @type {Set<string>} */
   const uniqueUrls = new Set(objectUrls.filter((url) => typeof url === 'string' && url.length > 0));
   let revokedUrls = 0;
 
