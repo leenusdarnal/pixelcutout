@@ -1,6 +1,6 @@
 <script lang="ts">
  import { onMount } from 'svelte';
- import { createZip } from '$lib/image/zip-store.js';
+ import { createZip } from '#lib/image/zip-store.js';
  type RGBColor = { r:number; g:number; b:number };
  type Method = 'ai'|'manual';
  type Item = { id:number; file:File; status:'queued'|'processing'|'done'|'error'; result?:Blob; includeInExport?:boolean; message?:string; sampleColor?:RGBColor; sampleTolerance?:number };

@@ -1,16 +1,16 @@
 <script lang="ts">
  import { onMount } from 'svelte';
- import { featherAlpha } from '$lib/image/feather-alpha.js';
+ import { featherAlpha } from '#lib/image/feather-alpha.js';
 
  type Tool = 'erase' | 'restore';
  type Background = 'transparent' | 'white' | 'soft' | 'dark' | 'gradient' | 'image' | 'custom';
  type TilePatch = { x: number; y: number; w: number; h: number; before: ImageData; after?: ImageData };
  type HistoryEntry = { patches: TilePatch[] };
 
- let { src, onError = () => {} } = $props<{
+ let { src, onError = () => {} }: {
   src: string;
   onError?: (message: string) => void;
- }>();
+} = $props();
 
  let canvasEl = $state<HTMLCanvasElement | undefined>(undefined);
  let ready = $state(false);

@@ -12,14 +12,18 @@
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.2",
-    "@sveltejs/adapter-static": "4.0.1",
-    "@sveltejs/kit": "3.1.1",
     "svelte": "5.57.3"
   },
   "devDependencies": {
+    "@sveltejs/adapter-static": "^4.0.0",
+    "@sveltejs/kit": "3.1.1",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "svelte-check": "4.7.8",
-    "typescript": "7.0.2",
+    "typescript": "^6.0.3",
     "vite": "8.3.6"
+  },
+  "imports": {
+    "#lib": "./src/lib/index.js",
+    "#lib/*": "./src/lib/*"
   }
 }
