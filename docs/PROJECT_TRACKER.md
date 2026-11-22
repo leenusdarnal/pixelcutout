@@ -3,7 +3,7 @@
 > Living implementation tracker. Update this file as work is completed. Keep changes small, measurable, and aligned with the privacy-first, browser-only product.
 
 **Tracker version:** 1.0  
-**Status:** Planning / implementation not yet started  
+**Status:** Implementation in progress  
 **Last updated:** 2026-11-22  
 **Product:** PixelCutout — one-image-at-a-time background removal  
 **Reference document:** `pixelcutout_project_tracker.docx` (project tracker document)
@@ -44,7 +44,7 @@ Use one status per task: **Open**, **In progress**, **Blocked**, or **Done**. Ad
 
 | ID | Task | Acceptance check | Status | Notes / evidence |
 |---|---|---|---|---|
-| P0-01 | Record current branch, commit, install/build/test commands, and CI status | Baseline is reproducible from a clean checkout | Open | |
+| P0-01 | Record current branch, commit, install/build/test commands, and CI status | Baseline is reproducible from a clean checkout | Blocked | Recorded in `docs/BASELINE.md`; latest CI failed at dependency installation, so clean-checkout reproducibility is not yet verified. |
 | P0-02 | Record current bundle size and identify largest initial-load assets | Baseline numbers captured before changes | Open | |
 | P0-03 | Inventory current dependencies and identify removable/duplicate packages | No dependency removed without checking usage | Open | |
 | P0-04 | Confirm privacy boundary for image pixels and model downloads | Docs/UI clearly distinguish local pixels from model asset downloads | Open | |
