@@ -1,7 +1,7 @@
 # PixelCutout dependency audit
 
 Captured: 2026-11-22
-Current baseline after the SvelteKit 3 migration implementation on the dedicated review branch. The changes are not yet merged; see the execution and remaining preview gates in the SvelteKit migration record.
+Current baseline after SvelteKit 3 migration PR #26 was merged to `main` at commit `c294b979bb88524be6ba9cd4be51d49a7d56a15e`. PR #27 subsequently merged documentation-only updates at `d4debc2def769fa2a8f45eb69dd083db0e4bf94e`; application code and dependencies were unchanged.
 Source: package manifest, npm v3 lockfile, clean npm install, production build, and npm audit results.
 
 ## Current direct dependencies
@@ -70,4 +70,4 @@ Validated in a clean Node 22.23.5 / npm 10.9.9 environment:
 - npm audit --omit=dev --audit-level=low — **0 vulnerabilities**.
 - Full npm audit — **0 vulnerabilities**.
 
-The application workflow, model, and image-processing logic were not otherwise changed. Browser network inspection and desktop/mobile preview checks remain outstanding and are tracked in docs/SVELTEKIT_MIGRATION_PLAN.md.
+The application workflow, model, and image-processing logic were not otherwise changed. The latest main-branch GitHub Actions run [#132](https://github.com/leenusdarnal/pixelcutout/actions/runs/45052837301), after PR #27, passed. Browser network inspection and interactive desktop/mobile preview checks remain outstanding and are tracked in docs/SVELTEKIT_MIGRATION_PLAN.md.
