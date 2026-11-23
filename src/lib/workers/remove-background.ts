@@ -1,4 +1,4 @@
-import { removeColorPixels } from '../image/remove-color.js';
+import { removeSampledColor } from './manual-processing.js';
 import { encodeRgbaPng } from '../image/png-output.js';
 import { runWithWasmFallback } from './runtime-fallback.js';
 import { selectInitialDevice } from './device-selection.js';
@@ -130,38 +130,6 @@ async function toPngBlob(rawImage: any): Promise<Blob> {
   return encodeRgbaPng(rawImage);
 }
 
-async function removeSampledColor(
-  file: Blob,
-  color: { r: number; g: number; b: number },
-  tolerance: number
-): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  let canvas: OffscreenCanvas | null = null;
-  let image: ImageData | null = null;
-
-  try {
-    canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-
-    if (!context) {
-      throw new Error('This browser cannot process the image. Try a recent version of Chrome, Edge, or Firefox.');
-    }
-
-    context.drawImage(bitmap, 0, 0);
-    image = context.getImageData(0, 0, bitmap.width, bitmap.height);
-    removeColorPixels(image.data, color, tolerance);
-    context.putImageData(image, 0, 0);
-    return await canvas.convertToBlob({ type: 'image/png' });
-  } finally {
-    // The encoded result is returned as a Blob; clear temporary uncompressed pixel memory.
-    image?.data.fill(0);
-    if (canvas) {
-      canvas.width = 0;
-      canvas.height = 0;
-    }
-    bitmap.close();
-  }
-}
 
 self.onmessage = async (event: MessageEvent) => {
   const message = event.data;
