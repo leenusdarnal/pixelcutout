@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Acquire a deterministic, local-only AIM-500 candidate set for PixelCutout.
+"""Acquire a deterministic, local-only AIM-500 benchmark candidate set.
 
-This script never uploads image pixels and never marks photo rights as approved.
-It writes candidate images/mattes and a metadata report under ignored benchmark paths.
+The data is fetched from a pinned, pixel-preserving mirror of the author release.
+The official AIM-500 agreement states that the dataset is MIT-licensed, asks for
+the IJCAI 2021 citation, and says underlying photo copyright remains with original
+owners. The full upstream MIT notice and citation are copied alongside local
+pixels. Nothing is uploaded by this script.
 """
 from __future__ import annotations
 
@@ -16,9 +19,40 @@ from pathlib import Path
 from typing import Any, Iterable
 
 DATASET_ID = "nobg/AIM-500"
-DATASET_VERSION = "Hugging Face dataset snapshot; record revision when available"
+DATASET_REVISION = "18df14dba162fd06c0a22c9ac54dfaab6c279d1f"
 DATASET_PAGE = "https://huggingface.co/datasets/nobg/AIM-500"
+OFFICIAL_PROJECT = "https://github.com/JizhiziLi/AIM"
+UPSTREAM_LICENSE_URL = "https://github.com/JizhiziLi/AIM/blob/master/LICENSE"
 DATASET_AGREEMENT = "https://jizhizili.github.io/files/aim_dataset_agreement/AIM-500_Dataset_Release_Agreement.pdf"
+PAPER_URL = "https://doi.org/10.24963/ijcai.2021/111"
+PAPER_CITATION = (
+    "Li, Jizhizi, Jing Zhang, and Dacheng Tao. "
+    "Deep Automatic Natural Image Matting. Proceedings of the 30th "
+    "International Joint Conference on Artificial Intelligence (IJCAI), 2021, "
+    "pp. 800–806. https://doi.org/10.24963/ijcai.2021/111"
+)
+MIT_LICENSE_TEXT = """MIT License
+
+Copyright (c) 2021 Jizhizi_Li
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
 TARGET_QUOTAS = {
     "animal": 3,
     "portrait": 3,
@@ -87,17 +121,40 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def write_compliance_files(output_root: Path) -> None:
+    """Keep the upstream MIT notice and required dataset citation with local pixels."""
+    output_root.mkdir(parents=True, exist_ok=True)
+    (output_root / "LICENSE-AIM-500.txt").write_text(
+        MIT_LICENSE_TEXT, encoding="utf-8"
+    )
+    citation = (
+        "AIM-500 dataset citation\n\n"
+        f"{PAPER_CITATION}\n\n"
+        f"Official project: {OFFICIAL_PROJECT}\n"
+        f"Dataset release agreement: {DATASET_AGREEMENT}\n"
+        f"Dataset mirror snapshot: {DATASET_ID}@{DATASET_REVISION}\n"
+        "The official release agreement states the dataset is under MIT and that "
+        "the photographs were collected from websites with free-use licences; "
+        "it also states that photograph copyright remains with the original owners.\n"
+    )
+    (output_root / "CITATION-AIM-500.txt").write_text(citation, encoding="utf-8")
+
+
 def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
-    """Write lossless RGB PNGs, 8-bit grayscale alpha PNGs, and pending metadata."""
+    """Write lossless RGB PNGs, grayscale alpha PNGs, and MIT-compliant metadata."""
     try:
         from PIL import Image
     except ImportError as error:
-        raise RuntimeError("Install the local benchmark requirements: python -m pip install -r benchmarks/requirements.txt") from error
+        raise RuntimeError(
+            "Install the local benchmark requirements: "
+            "python -m pip install -r benchmarks/requirements.txt"
+        ) from error
 
     image_dir = output_root / "images"
     mask_dir = output_root / "masks"
     image_dir.mkdir(parents=True, exist_ok=True)
     mask_dir.mkdir(parents=True, exist_ok=True)
+    write_compliance_files(output_root)
 
     cases = []
     for row in rows:
@@ -112,7 +169,8 @@ def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> di
         if image is None or mask is None:
             raise ValueError(f"{case_id}: source image or alpha matte is missing")
 
-        # Convert decoded RGB pixels to PNG without lossy recompression.
+        # The mirror documents and verifies that conversion to L preserves every
+        # upstream mask pixel (including RGB/RGBA-encoded grayscale mattes).
         image_rgb = image.convert("RGB")
         alpha = mask.convert("L")
         if image_rgb.size != alpha.size:
@@ -136,23 +194,67 @@ def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> di
             "annotation_sha256": sha256(mask_path),
             "image_bytes": image_path.stat().st_size,
             "annotation_bytes": mask_path.stat().st_size,
-            "rights_status": "pending",
-            "rights_note": (
-                "Dataset card does not provide per-image source/licence evidence. "
-                "Verify original photograph rights before commercial benchmark use."
+            "dataset_license": "MIT",
+            "dataset_license_copyright": "Copyright (c) 2021 Jizhizi_Li",
+            "photo_copyright": "Original image owners; no transfer or re-licensing is claimed",
+            "photo_source_license_note": (
+                "The official release agreement says dataset images were collected "
+                "from websites with free-use licences. The pinned mirror does not "
+                "supply original per-photo landing-page or licence URLs."
             ),
+            "rights_status": "dataset_mit_terms_applied_local_benchmark_only",
+            "redistribution_status": "not_redistributed_by_this_workflow",
+            "attribution": PAPER_CITATION,
         })
 
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "dataset": DATASET_ID,
+        "dataset_revision": DATASET_REVISION,
         "dataset_page": DATASET_PAGE,
-        "dataset_agreement": DATASET_AGREEMENT,
-        "split": "test",
-        "selection": "deterministic category quotas; type diversity preferred",
+        "official_project": OFFICIAL_PROJECT,
+        "upstream_license_url": UPSTREAM_LICENSE_URL,
+        "dataset_license": {
+            "spdx": "MIT",
+            "copyright": "Copyright (c) 2021 Jizhizi_Li",
+            "notice_file": "LICENSE-AIM-500.txt",
+            "notice_included": True,
+            "terms_source": UPSTREAM_LICENSE_URL,
+        },
+        "release_agreement": {
+            "url": DATASET_AGREEMENT,
+            "dataset_license_statement": "The Dataset is under MIT license.",
+            "image_source_statement": (
+                "All the images in the Dataset are collected from websites with free use licenses."
+            ),
+            "photo_copyright_statement": (
+                "The copyright of the images in the Dataset belongs to the original owners."
+            ),
+            "citation_required_for_research_documents": True,
+            "indemnification_clause_present": True,
+            "read_before_download": True,
+        },
+        "citation": {
+            "required": True,
+            "file": "CITATION-AIM-500.txt",
+            "text": PAPER_CITATION,
+            "url": PAPER_URL,
+        },
+        "acquisition": {
+            "split": "test",
+            "selection": "deterministic category quotas; type diversity preferred",
+            "mirror_revision_pinned": DATASET_REVISION,
+            "pixels_uploaded": False,
+            "raw_pixels_redistributed": False,
+            "source_image_level_metadata": (
+                "The pinned Hugging Face mirror does not include original per-photo "
+                "landing-page URLs or individual source licence URLs."
+            ),
+            "intended_use": "local model evaluation; preserve source copyright and include MIT notice/citation",
+        },
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
-        "rights_status": "pending",
-        "commercial_use_approved": False,
+        "rights_status": "dataset_mit_terms_applied_local_benchmark_only",
+        "raw_image_redistribution_approved": False,
         "cases": cases,
     }
     report_path = output_root / "aim500-candidates.json"
@@ -178,13 +280,20 @@ def main() -> int:
             "python -m pip install -r benchmarks/requirements.txt"
         )
 
-    print(f"Loading {DATASET_ID} test split. This downloads dataset files locally.")
-    dataset = load_dataset(DATASET_ID, split="test")
+    print(
+        f"Loading {DATASET_ID}@{DATASET_REVISION} test split. "
+        "This downloads dataset files locally."
+    )
+    dataset = load_dataset(
+        DATASET_ID,
+        revision=DATASET_REVISION,
+        split="test",
+    )
     rows = select_candidates(dataset)
     report = write_candidate_set(args.output, rows)
-    print(f"Wrote {len(report['cases'])} candidate image/matte pairs to {args.output}")
-    print(f"Metadata report: {args.output / 'aim500-candidates.json'}")
-    print("Rights status: PENDING — this is not commercial-use clearance.")
+    print(f"Wrote {len(report['cases'])} image/matte pairs to {args.output}")
+    print("Included upstream MIT notice and IJCAI 2021 citation.")
+    print("Pixels remain local; original photo copyrights remain with their owners.")
     return 0
 
 
