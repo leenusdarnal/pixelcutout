@@ -1,6 +1,19 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
-from acquire_aim500 import TARGET_QUOTAS, safe_stem, select_candidates
+from PIL import Image
+
+from acquire_aim500 import (
+    DATASET_REVISION,
+    MIT_LICENSE_TEXT,
+    PAPER_CITATION,
+    TARGET_QUOTAS,
+    safe_stem,
+    select_candidates,
+    write_candidate_set,
+)
 
 
 def row(category, image_name, item_type="SO"):
@@ -53,6 +66,47 @@ class CandidateSelectionTests(unittest.TestCase):
         duplicate = self.rows + [self.rows[0]]
         with self.assertRaisesRegex(ValueError, "Duplicate dataset image_name"):
             select_candidates(duplicate)
+
+
+class MitComplianceTests(unittest.TestCase):
+    def test_candidate_report_carries_mit_notice_and_required_citation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "aim500"
+            candidate = {
+                "case_id": "B01",
+                "image_name": "fixture-001",
+                "category": "portrait",
+                "type": "SO",
+                "image": Image.new("RGB", (8, 6), (20, 40, 60)),
+                "mask": Image.new("L", (8, 6), 128),
+            }
+            report = write_candidate_set(output, [candidate])
+
+            self.assertEqual(report["schema_version"], 2)
+            self.assertEqual(report["dataset_revision"], DATASET_REVISION)
+            self.assertEqual(report["dataset_license"]["spdx"], "MIT")
+            self.assertTrue(report["dataset_license"]["notice_included"])
+            self.assertFalse(report["raw_image_redistribution_approved"])
+            self.assertFalse(report["acquisition"]["pixels_uploaded"])
+            self.assertIn("original owners", report["release_agreement"]["photo_copyright_statement"])
+            self.assertTrue((output / "LICENSE-AIM-500.txt").is_file())
+            self.assertEqual(
+                (output / "LICENSE-AIM-500.txt").read_text(encoding="utf-8"),
+                MIT_LICENSE_TEXT,
+            )
+            citation_file = (output / "CITATION-AIM-500.txt").read_text(encoding="utf-8")
+            self.assertIn(PAPER_CITATION, citation_file)
+            self.assertTrue(report["citation"]["required"])
+
+            case = report["cases"][0]
+            self.assertEqual(case["rights_status"], "dataset_mit_terms_applied_local_benchmark_only")
+            self.assertEqual(case["photo_copyright"], "Original image owners; no transfer or re-licensing is claimed")
+            self.assertEqual(case["annotation_type"], "alpha")
+            self.assertTrue((output / "images" / case["filename"]).is_file())
+            self.assertTrue((output / "masks" / case["annotation_filename"]).is_file())
+
+    def test_report_records_mirror_revision_not_floating_main(self):
+        self.assertRegex(DATASET_REVISION, r"^[0-9a-f]{40}$")
 
 
 if __name__ == "__main__":
