@@ -60,7 +60,9 @@ jobs:
           assert report["citation"]["required"] is True
           assert report["acquisition"]["pixels_uploaded"] is False
           assert report["acquisition"]["raw_pixels_redistributed"] is False
-          assert report["release_agreement"]["access_terms_acknowledged"] is True\n          assert report["release_agreement"]["indemnification_clause_present"] is True\n          assert report["release_agreement"]["acknowledgement_method"] == "Explicit user-supplied --accept-release-terms flag"
+          assert report["release_agreement"]["access_terms_acknowledged"] is True
+          assert report["release_agreement"]["indemnification_clause_present"] is True
+          assert report["release_agreement"]["acknowledgement_method"] == "Explicit user-supplied --accept-release-terms flag"
           assert report["release_agreement"]["citation_required_for_research_documents"] is True
           assert (root / report["dataset_license"]["notice_file"]).is_file()
           assert (root / report["citation"]["file"]).is_file()
