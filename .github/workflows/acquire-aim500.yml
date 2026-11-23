@@ -1,6 +1,8 @@
 name: Acquire AIM-500 benchmark candidates
 
 on:
+  push:
+    branches: [feat/aim500-mit-compliance]
   workflow_dispatch:
     inputs:
       confirm_download:
