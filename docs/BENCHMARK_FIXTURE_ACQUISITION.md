@@ -1,6 +1,6 @@
 # Model benchmark fixture acquisition plan
 
-**Status:** Source plan researched; no dataset images or masks have been imported into the local benchmark yet.  
+**Status:** A 16-case local AIM-500 acquisition path is implemented. It pins the mirror snapshot, includes the upstream MIT notice and paper citation, and keeps all source pixels local. No image binaries are committed or uploaded.  
 **Goal:** Acquire a small, traceable 16-image set for comparing MODNet with general-purpose alternatives on identical inputs.  
 **Storage rule:** Source images and ground-truth masks stay local in ignored benchmark folders. Never place them in `static/`, `public/`, app source, Git, or deployment artifacts.
 
@@ -14,9 +14,11 @@
 - Research paper: [Deep Automatic Natural Image Matting, IJCAI 2021](https://doi.org/10.24963/ijcai.2021/111).
 - Optional indexed mirror for inspection: [nobg/AIM-500 on Hugging Face](https://huggingface.co/datasets/nobg/AIM-500). Prefer the official author release for acquisition and record whether a mirror was used.
 
-AIM-500 is the best starting point for this comparison: the authors describe 500 high-resolution real-world images across seven categories—100 portraits, 200 animals, 34 transparent objects, 75 plants, 45 furniture items, 36 toys, and 10 fruit images—with manually labelled alpha mattes. It includes salient-opaque, salient-transparent/meticulous, and non-salient image types. The published release agreement states that the dataset is under MIT and that images were collected from websites with free-use licences, while also stating that copyright in each image remains with its original owner.
+AIM-500 is the primary real-photo source for this comparison: the authors describe 500 high-resolution images across seven categories—100 portraits, 200 animals, 34 transparent objects, 75 plants, 45 furniture items, 36 toys, and 10 fruit images—with manually labelled alpha mattes. It includes salient-opaque, salient-transparent/meticulous, and non-salient image types. The official release agreement states that the Dataset is under the MIT license, that the images were collected from websites with free-use licences, and that copyright in the photographs remains with the original owners. It also asks research documents and papers using the Dataset to cite the IJCAI 2021 paper and includes an indemnification clause.
 
-**Rights gate:** Treat the dataset-level MIT statement as the dataset release terms, not as proof that every underlying photograph has been relicensed by its photographer. Before marking an AIM-500 item approved, retain its original source/landing page and verify the image-specific licence permits the intended internal and potential commercial evaluation. The agreement requires users to read and comply with its terms and requests citation of the IJCAI 2021 paper. If an image's original licence cannot be traced, mark it `pending` and do not include it in the approved commercial-use benchmark.
+**MIT compliance for PixelCutout:** The acquisition script copies the upstream MIT `LICENSE` text (including `Copyright (c) 2021 Jizhizi_Li`) into `LICENSE-AIM-500.txt` beside the local images and masks, and writes the required paper reference to `CITATION-AIM-500.txt`. It records the exact upstream project, release-agreement URL, and pinned mirror revision in the JSON report. Keep these notices with any local copy or substantial portion of the dataset.
+
+**Photo copyright boundary:** The agreement expressly says image copyright belongs to original owners. The Hugging Face mirror used by the script does not provide per-photo source landing pages or individual licence URLs; its dataset card says it mirrors the original image and mask bytes and omits derived `trimap/` and `usr/` folders. Therefore this PixelCutout workflow is deliberately limited to local model evaluation: source images and masks remain in ignored folders and are never uploaded to GitHub artifacts or the app. Do not republish raw photos/mattes, create a public image gallery, or reuse an individual photo independently without checking its original owner/source terms and any attribution requirements. The MIT notice does not transfer the photographers' copyright to PixelCutout.
 
 ### Supplement for exact edge cases: Open Images V7
 
@@ -68,20 +70,16 @@ Select the best matching image from AIM-500 first. The dataset categories are br
 
 ## 4. Rights and provenance checklist for every image
 
-Before adding a case to the approved manifest:
+Before acquiring or using an AIM-500 case in this local benchmark:
 
-- [ ] Dataset release agreement and any access conditions have been read and accepted.
-- [ ] Exact image ID and filename are recorded; do not rely on a dataset name alone.
-- [ ] Original image landing-page URL and creator/photographer are recorded where available.
-- [ ] Image-specific licence name and licence URL are recorded; confirm that commercial use and modification are permitted for the intended use.
-- [ ] Dataset agreement URL and dataset version are recorded separately from the original image licence.
-- [ ] Annotation/matte provenance and annotation licence are recorded separately from the photograph's licence.
-- [ ] Required attribution text is recorded verbatim or linked.
-- [ ] Any missing or conflicting rights information is marked `pending`; do not use that item in the approved benchmark.
-- [ ] The local image and ground-truth mask are hashed and dimensions are recorded.
-- [ ] The image/mask pair is stored locally only and is absent from Git, the app bundle, and deployments.
-
-A dataset-level MIT or CC label must not overwrite a stricter licence on the underlying image or annotation. The image, the mask, and any derived annotation can have different rights owners and licences.
+- [ ] Read and agree to the official AIM-500 v1.0 release agreement before downloading.
+- [ ] Preserve the upstream MIT copyright and permission notice (`Copyright (c) 2021 Jizhizi_Li`) in `LICENSE-AIM-500.txt`.
+- [ ] Preserve the required IJCAI 2021 citation in `CITATION-AIM-500.txt` and in any published research document/paper that uses the dataset.
+- [ ] Record exact dataset ID, image filename, category/type, pinned dataset revision, and SHA-256 for both image and alpha matte.
+- [ ] Record the agreement's statement that source photographs were collected from websites with free-use licences and that their copyright remains with original owners.
+- [ ] Do not invent a photographer, image landing-page URL, or individual licence URL when the mirror does not provide it; record that provenance gap explicitly.
+- [ ] Keep images and mattes under ignored local benchmark directories; do not commit, upload as workflow artifacts, bundle in the app, or expose through a public gallery.
+- [ ] Before any external redistribution or independent reuse of an individual photograph, locate the original source and comply with that owner's licence and attribution terms.
 
 ## 5. Local-only folder layout
 
@@ -135,14 +133,14 @@ Allowed `annotation_type` values: `alpha` for a soft foreground-opacity matte, o
 
 ## 7. Acquisition and benchmark workflow
 
-1. Read the AIM-500 agreement and download the official release locally.
-2. Inspect the categories and source metadata; shortlist more than 16 candidates so that the final set is chosen by actual visual match, not convenience.
-3. Fill B01-B16 using the matrix. Keep any unmatched case open or acquire a separately rights-cleared image with a reviewed alpha matte.
-4. Verify each image and annotation licence independently; set `license_status: "approved"` only after both are cleared.
-5. Copy only the selected input images to `benchmarks/images/` and their ground-truth masks to `benchmarks/masks/`; compute SHA-256 and dimensions.
-6. Run `npm run benchmark:validate -- --require-complete` after the selected 16 image records are complete. The existing validator checks image paths and hashes; it does not yet validate mask metadata or legal status, so those require manual review.
-7. Run MODNet and each candidate on the exact same input bytes, dimensions, resize policy, and cache/device conditions.
-8. Score alpha-ground-truth cases separately from binary-ground-truth cases. Never report them as one interchangeable metric. Preserve the original soft matte; do not binarise alpha mattes for alpha-quality metrics.
-9. Keep model outputs and raw measurements local. Publish only permitted aggregate metrics and attribution.
+1. Read and agree to the official AIM-500 release agreement before downloading.
+2. Install the local-only requirements and run `python benchmarks/acquire_aim500.py`. The script uses the pinned mirror revision `18df14dba162fd06c0a22c9ac54dfaab6c279d1f`, writes the 16 selected RGB/alpha pairs under ignored `benchmarks/results/aim500/`, and places the MIT notice and paper citation alongside them.
+3. Review the JSON report, category/type mix, hashes, dimensions, MIT notice, citation, and explicit original-photo copyright note. The selected 16 are category-balanced candidates; visually inspect them before assigning fine-grained challenge labels or publishing per-case conclusions.
+4. Keep images/mattes local. The acquisition workflow uploads metadata only; it does not upload image or matte binaries.
+5. Run MODNet and each candidate on the exact same input bytes, dimensions, resize policy, and cache/device conditions. Keep outputs and timing results local.
+6. Score alpha-ground-truth cases using the original soft mattes. Do not binarise alpha mattes or pool these scores with binary-mask benchmarks.
+7. Include the IJCAI 2021 citation in research documents/papers and retain the upstream MIT notice with any copy/substantial portion of the dataset.
+8. Before publishing or redistributing any raw photograph/matte, verify the original owner's licence and attribution requirements; the MIT Dataset notice does not transfer photo copyright.
+
 
 **Current decision:** AIM-500 is the preferred source for the first real-world alpha benchmark, subject to per-image rights verification and a visual match to each case. Open Images V7 is the fallback for a small, separately reported binary-mask extension. No source images have yet been approved, downloaded, or registered in the manifest, and no model scores have been measured.
