@@ -62,7 +62,7 @@ For each candidate, record:
 - WebGPU and WASM results separately; record unsupported or failed combinations rather than silently excluding them.
 - Device, browser/version, operating system, image ID, dimensions, and whether assets were already cached.
 
-Use the same device, browser version, test image, cache state, and input dimensions when comparing candidates. Run at least one desktop-class and one mid-range Android device before choosing the production default. Do not claim first-load performance based only on Vite emitted asset sizes; use a browser network waterfall.
+Use the same device, browser version, test image, cache state, and input dimensions when comparing candidates. Run at least one desktop-class and one mid-range Android device before choosing the production default. Do not claim first-load performance based only on Vite emitted asset sizes; use a browser network waterfall. For the primary soft-alpha scorecard, run `npm run benchmark:validate -- --require-alpha-complete` before scoring; binary segmentation cases, if retained as an extension, must be reported separately.
 
 ## 5. Candidate comparison sheet
 

@@ -99,7 +99,7 @@ Do not commit dataset archives, source images, masks, model outputs, or raw pixe
 
 ## 6. Manifest metadata
 
-Continue to populate the validator's existing fields: `id`, `filename`, `source`, `creator`, `license`, `sha256`, `width`, and `height`. Add the following fields for an auditable selection (the current validator does not yet enforce these additional fields):
+Populate the validator's source fields, independent annotation fields, and rights evidence. The validator checks both local pixel files and the metadata below; do not register a case with invented source or licence data:
 
 ```json
 {
@@ -120,7 +120,10 @@ Continue to populate the validator's existing fields: `id`, `filename`, `source`
   "annotation_filename": "b01-person-hair-alpha.png",
   "annotation_type": "alpha",
   "annotation_license": "Record the exact annotation licence",
-  "annotation_license_url": "https://example.org/annotation-terms",
+  "annotation_license_url": "https://annotation-source.example/terms",
+  "annotation_sha256": "64-character lowercase annotation SHA-256",
+  "annotation_width": 1920,
+  "annotation_height": 1080,
   "license_status": "pending",
   "rights_checked_on": null,
   "attribution": "Exact required attribution, if any",
@@ -128,7 +131,7 @@ Continue to populate the validator's existing fields: `id`, `filename`, `source`
 }
 ```
 
-Allowed `annotation_type` values: `alpha` for a soft foreground-opacity matte, or `binary` for an object segmentation mask. Allowed `license_status` values: `pending`, `approved`, or `excluded`. Only `approved` items may be used in the commercial-use benchmark. Do not put fabricated creator names, URLs, IDs, or licence values in the manifest.
+Allowed `annotation_type` values: `alpha` for a soft foreground-opacity matte, or `binary` for an object segmentation mask. Allowed `license_status` values: `pending`, `approved`, or `excluded`. The validator verifies image and annotation files, hashes, dimensions, and HTTPS provenance URLs. `--require-complete` requires all 16 IDs and approved rights status; `--require-alpha-complete` also requires all annotations to be alpha mattes. Only approved records may be included in the commercial-use benchmark. Do not put fabricated creator names, URLs, IDs, or licence values in the manifest.
 
 ## 7. Acquisition and benchmark workflow
 
