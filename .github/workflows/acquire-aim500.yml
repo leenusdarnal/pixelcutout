@@ -1,0 +1,76 @@
+name: Acquire AIM-500 benchmark candidates
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_download:
+        description: "Confirm fetching AIM-500 candidates. Only the metadata report is uploaded; image and matte files are not."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aim500-acquisition
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    if: ${{ inputs.confirm_download == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out acquisition tooling
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: benchmarks/requirements.txt
+
+      - name: Install acquisition-only dependencies
+        run: python -m pip install -r benchmarks/requirements.txt
+
+      - name: Run selection and safety tests
+        run: python -m unittest discover -s benchmarks -p 'test_*.py' -v
+
+      - name: Download and extract AIM-500 candidates
+        run: python benchmarks/acquire_aim500.py --output benchmarks/results/aim500
+
+      - name: Verify candidate report and local image/matte pairs
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("benchmarks/results/aim500")
+          report_path = root / "aim500-candidates.json"
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          cases = report.get("cases", [])
+          assert len(cases) == 16, f"Expected 16 candidate pairs, got {len(cases)}"
+          assert report.get("rights_status") == "pending"
+          assert report.get("commercial_use_approved") is False
+          for case in cases:
+              assert case.get("rights_status") == "pending", case.get("case_id")
+              assert case.get("annotation_type") == "alpha", case.get("case_id")
+              image = root / "images" / case["filename"]
+              matte = root / "masks" / case["annotation_filename"]
+              assert image.is_file(), image
+              assert matte.is_file(), matte
+          print("Verified 16 image/matte pairs. Rights remain pending; commercial use is not approved.")
+          print("Only the JSON metadata report will be uploaded.")
+          PY
+
+      - name: Upload metadata report only
+        uses: actions/upload-artifact@v4
+        with:
+          name: aim500-metadata-${{ github.run_id }}
+          path: benchmarks/results/aim500/aim500-candidates.json
+          if-no-files-found: error
+          retention-days: 3

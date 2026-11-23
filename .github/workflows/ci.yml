@@ -61,6 +61,8 @@ jobs:
             );
           }
           NODE
+      - name: Test local benchmark acquisition selection
+        run: python -m unittest discover -s benchmarks -p 'test_*.py' -v
       - name: Validate benchmark manifest
         run: npm run benchmark:validate
       - name: Build, type-check and run unit tests
