@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image
 
 from acquire_aim500 import (
-    DATASET_REVISION,
+    DATASET_REVISION_REF,
     MIT_LICENSE_TEXT,
     PAPER_CITATION,
     TARGET_QUOTAS,
@@ -80,10 +80,10 @@ class MitComplianceTests(unittest.TestCase):
                 "image": Image.new("RGB", (8, 6), (20, 40, 60)),
                 "mask": Image.new("L", (8, 6), 128),
             }
-            report = write_candidate_set(output, [candidate])
+            revision = "a" * 40\n            report = write_candidate_set(output, [candidate], revision)
 
             self.assertEqual(report["schema_version"], 2)
-            self.assertEqual(report["dataset_revision"], DATASET_REVISION)
+            self.assertEqual(report["dataset_revision"], revision)\n            self.assertEqual(report["dataset_revision_ref"], DATASET_REVISION_REF)
             self.assertEqual(report["dataset_license"]["spdx"], "MIT")
             self.assertTrue(report["dataset_license"]["notice_included"])
             self.assertFalse(report["raw_image_redistribution_approved"])
@@ -106,7 +106,7 @@ class MitComplianceTests(unittest.TestCase):
             self.assertTrue((output / "masks" / case["annotation_filename"]).is_file())
 
     def test_report_records_mirror_revision_not_floating_main(self):
-        self.assertRegex(DATASET_REVISION, r"^[0-9a-f]{40}$")
+        self.assertEqual(DATASET_REVISION_REF, "refs/convert/parquet")
 
 
 if __name__ == "__main__":
