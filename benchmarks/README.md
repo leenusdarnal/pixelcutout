@@ -1,6 +1,17 @@
 # Benchmark manifest
 
-This manifest tracks the local image fixtures described in [MODEL_BENCHMARK.md](../docs/MODEL_BENCHMARK.md). See the [16-case acquisition checklist](../docs/BENCHMARK_FIXTURE_ACQUISITION.md) before sourcing or approving any image. The committed manifest contains metadata only; source images and ground-truth masks are intentionally excluded from Git and the app build.
+This manifest tracks the local image fixtures described in [MODEL_BENCHMARK.md](../docs/MODEL_BENCHMARK.md). The committed manifest contains metadata only; source images and ground-truth masks are intentionally excluded from Git and the app build.
+
+## Project-owned synthetic smoke set
+
+For a reproducible 16-case set with exact procedurally generated alpha mattes, see [the synthetic benchmark guide](../docs/SYNTHETIC_BENCHMARK.md). Generate it locally with:
+
+```sh
+python -m pip install "Pillow>=10,<13"
+python benchmarks/generate_synthetic.py
+```
+
+The RGB inputs, mattes, and hash manifest are written under ignored `benchmarks/results/synthetic-v1/`. The suite uses no third-party images and is useful for pipeline checks, alpha-matte regression tests, and controlled synthetic comparisons. It is **not** a photorealistic benchmark and must not be pooled with natural-image scores or used alone to choose the production model.
 
 ## Approved source path
 
