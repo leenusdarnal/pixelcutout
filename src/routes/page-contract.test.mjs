@@ -46,6 +46,16 @@ test('focus, reduced motion, processing, and error states are explicit', () => {
   assert.match(page, /role="progressbar"/);
 });
 
+
+test('image alternatives stay concise and the manual sampling image is decorative', () => {
+  assert.match(page, /id="original-preview"[^>]*alt="Original"/);
+  assert.match(
+    page,
+    /aria-label="Sample a background colour from the image\. Keyboard activation samples the centre\."[\s\S]*?<img class="preview-image" src=\{original\} alt=""/
+  );
+  assert.match(page, /class="preview-image" src=\{original\} alt="Original"/);
+});
+
 test('privacy copy distinguishes local image pixels from model downloads', () => {
   assert.match(page, /Image pixels are processed in your browser, never uploaded/);
   assert.match(page, /downloads its model and runtime after you choose removal/);
