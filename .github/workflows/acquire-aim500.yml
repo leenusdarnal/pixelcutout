@@ -1,12 +1,10 @@
 name: Acquire AIM-500 benchmark candidates
 
 on:
-  push:
-    branches: [feat/aim500-mit-compliance]
   workflow_dispatch:
     inputs:
       confirm_download:
-        description: "Confirm fetching the pinned AIM-500 snapshot under its MIT release terms. Images/mattes stay on the runner; only metadata is uploaded."
+        description: "I have personally read and agree to the official AIM-500 release agreement, including its access conditions and indemnification clause. The tool preserves the MIT notice and citation; images/mattes remain local to this runner."
         required: true
         type: boolean
         default: false
@@ -20,7 +18,7 @@ concurrency:
 
 jobs:
   acquire:
-    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/feat/aim500-mit-compliance') || inputs.confirm_download == true }}
+    if: ${{ inputs.confirm_download == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -43,7 +41,7 @@ jobs:
         run: python -m unittest discover -s benchmarks -p 'test_*.py' -v
 
       - name: Download and extract AIM-500 candidates
-        run: python benchmarks/acquire_aim500.py --output benchmarks/results/aim500
+        run: python benchmarks/acquire_aim500.py --accept-release-terms --output benchmarks/results/aim500
 
       - name: Verify candidate report and local image/matte pairs
         run: |
@@ -62,7 +60,7 @@ jobs:
           assert report["citation"]["required"] is True
           assert report["acquisition"]["pixels_uploaded"] is False
           assert report["acquisition"]["raw_pixels_redistributed"] is False
-          assert report["release_agreement"]["read_before_download"] is True
+          assert report["release_agreement"]["access_terms_acknowledged"] is True\n          assert report["release_agreement"]["indemnification_clause_present"] is True\n          assert report["release_agreement"]["acknowledgement_method"] == "Explicit user-supplied --accept-release-terms flag"
           assert report["release_agreement"]["citation_required_for_research_documents"] is True
           assert (root / report["dataset_license"]["notice_file"]).is_file()
           assert (root / report["citation"]["file"]).is_file()
