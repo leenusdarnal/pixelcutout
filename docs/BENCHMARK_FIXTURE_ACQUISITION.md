@@ -134,7 +134,7 @@ Allowed `annotation_type` values: `alpha` for a soft foreground-opacity matte, o
 ## 7. Acquisition and benchmark workflow
 
 1. Read and agree to the official AIM-500 release agreement before downloading.
-2. Install the local-only requirements and run `python benchmarks/acquire_aim500.py`. The script uses the pinned mirror revision `18df14dba162fd06c0a22c9ac54dfaab6c279d1f`, writes the 16 selected RGB/alpha pairs under ignored `benchmarks/results/aim500/`, and places the MIT notice and paper citation alongside them.
+2. Install the local-only requirements and run `python benchmarks/acquire_aim500.py`. The script resolves the Hugging Face `refs/convert/parquet` snapshot to its full immutable commit SHA, then loads that exact SHA. The resolved commit is recorded in the JSON report and citation file. It writes the 16 selected RGB/alpha pairs under ignored `benchmarks/results/aim500/` and places the MIT notice and paper citation alongside them.
 3. Review the JSON report, category/type mix, hashes, dimensions, MIT notice, citation, and explicit original-photo copyright note. The selected 16 are category-balanced candidates; visually inspect them before assigning fine-grained challenge labels or publishing per-case conclusions.
 4. Keep images/mattes local. The acquisition workflow uploads metadata only; it does not upload image or matte binaries.
 5. Run MODNet and each candidate on the exact same input bytes, dimensions, resize policy, and cache/device conditions. Keep outputs and timing results local.
