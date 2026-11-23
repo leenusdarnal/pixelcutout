@@ -1,6 +1,8 @@
 name: Acquire AIM-500 benchmark candidates
 
 on:
+  push:
+    branches: [run/aim500-acquisition-20261123]
   workflow_dispatch:
     inputs:
       confirm_download:
@@ -18,7 +20,7 @@ concurrency:
 
 jobs:
   acquire:
-    if: ${{ inputs.confirm_download == true }}
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/run/aim500-acquisition-20261123') || inputs.confirm_download == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
