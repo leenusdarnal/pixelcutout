@@ -65,6 +65,21 @@ Use the same generated source files for every model and runtime. Keep the genera
 
 Do not present these scenes as natural photographs. Their geometry, textures, and material appearance are procedural illustrations, so they cannot establish real-world performance on photography, complex hair, animal fur, skin, glass, or commercial product imagery. Do not combine these results with AIM-500 or other real-photo scores, and do not select the production model from synthetic results alone.
 
+## Score a local model output
+
+After generating predictions named `B01.png` through `B16.png` in a local `predictions/` folder, score them against the exact alpha mattes:
+
+```sh
+python benchmarks/evaluate_alpha.py \
+  --manifest benchmarks/results/synthetic-v1/manifest.json \
+  --predictions benchmarks/results/synthetic-v1/predictions \
+  --output benchmarks/results/synthetic-v1/scores.json
+```
+
+The scorer reads the original 8-bit mattes for MAE, SAD/1000, and MSE, and separately reports thresholded IoU/F1 and boundary F1 (default threshold 128, tolerance 2 pixels). It requires matching dimensions, checks matte hashes from the manifest, supports grayscale or RGBA predictions, and keeps all pixels and scorecards local. See [the benchmark fixture guide](../benchmarks/README.md#score-local-alpha-predictions) for the AIM-500 command and metric definitions.
+
+A perfect score on these procedurally generated illustrations verifies the scoring pipeline; it does not demonstrate natural-photo model quality.
+
 ## Rights and privacy
 
 The generator contains no network client and loads no external image. The output pixels are drawn from project-authored code and are labelled \`project-owned\` in the generated manifest. Keep generated PNGs and raw score files under ignored \`benchmarks/results/\`; do not commit them, put them under \`static/\` or \`public/\`, or send them to a remote service.
