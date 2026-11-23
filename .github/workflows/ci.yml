@@ -61,7 +61,9 @@ jobs:
             );
           }
           NODE
-      - name: Test local benchmark acquisition selection
+      - name: Install synthetic benchmark test dependency
+        run: python -m pip install --disable-pip-version-check "Pillow>=10,<13"
+      - name: Test local benchmark acquisition and synthetic fixture tooling
         run: python -m unittest discover -s benchmarks -p 'test_*.py' -v
       - name: Validate benchmark manifest
         run: npm run benchmark:validate
