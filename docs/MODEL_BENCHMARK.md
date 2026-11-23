@@ -1,6 +1,6 @@
 # PixelCutout model benchmark protocol
 
-**Status:** Benchmark protocol and metadata validator are in place. AIM-500 is the primary local real-photo evaluation source under its official MIT release terms; the acquisition tool pins the mirror revision and carries the upstream MIT notice and required citation. The synthetic 16-case suite remains a separate smoke/regression set. Model scores and device measurements are still pending. See [the AIM-500 acquisition checklist](BENCHMARK_FIXTURE_ACQUISITION.md) and [the synthetic benchmark guide](SYNTHETIC_BENCHMARK.md).  
+**Status:** Benchmark protocol and metadata validator are in place. AIM-500 is the primary local real-photo evaluation source under its official MIT release terms; the acquisition tool preserves the upstream MIT notice and required citation, records both immutable snapshot SHAs, and requires explicit agreement acknowledgement. The new terms-gated acquisition has not yet been run; the synthetic 16-case suite remains a separate smoke/regression set. Model scores and device measurements are still pending. See [the AIM-500 acquisition checklist](BENCHMARK_FIXTURE_ACQUISITION.md) and [the synthetic benchmark guide](SYNTHETIC_BENCHMARK.md).  
 **Purpose:** Select the lightest model/runtime that meets PixelCutout's broad-subject and fine-edge quality requirements.  
 **Product constraint:** All image pixels stay local. Benchmark images are test fixtures only and must never be included in the deployed site.
 
