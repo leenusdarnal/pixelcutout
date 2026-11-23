@@ -73,13 +73,13 @@ jobs:
               assert case.get("rights_status") == "dataset_mit_terms_applied_local_benchmark_only", case.get("case_id")
               assert case.get("dataset_license") == "MIT", case.get("case_id")
               assert case.get("annotation_type") == "alpha", case.get("case_id")
-              assert "original owners" in case.get("photo_copyright", "").lower()
+              assert "original image owners" in case.get("photo_copyright", "").lower(), case.get("case_id")
               image = root / "images" / case["filename"]
               matte = root / "masks" / case["annotation_filename"]
               assert image.is_file(), image
               assert matte.is_file(), matte
           print("Verified 16 image/matte pairs and bundled MIT notice/citation.")
-          print("Photo copyright remains with original owners; raw pixels remain local.")
+          print("Photo copyright remains with the original image owners; raw pixels remain local.")
           print("Only the JSON metadata report will be uploaded.")
           PY
 
