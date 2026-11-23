@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_download:
-        description: "Confirm downloading AIM-500 candidate images and alpha mattes to a private workflow artifact"
+        description: "Confirm fetching AIM-500 candidates. Only the metadata report is uploaded; image and matte files are not."
         required: true
         type: boolean
         default: false
@@ -22,10 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - name: Check out reviewed acquisition tooling
+      - name: Check out acquisition tooling
         uses: actions/checkout@v4
         with:
-          ref: feat/aim500-local-acquisition
           persist-credentials: false
 
       - name: Set up Python
@@ -44,13 +43,14 @@ jobs:
       - name: Download and extract AIM-500 candidates
         run: python benchmarks/acquire_aim500.py --output benchmarks/results/aim500
 
-      - name: Verify candidate report safety gates
+      - name: Verify candidate report and local image/matte pairs
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
-          report_path = Path("benchmarks/results/aim500/aim500-candidates.json")
+          root = Path("benchmarks/results/aim500")
+          report_path = root / "aim500-candidates.json"
           report = json.loads(report_path.read_text(encoding="utf-8"))
           cases = report.get("cases", [])
           assert len(cases) == 16, f"Expected 16 candidate pairs, got {len(cases)}"
@@ -59,18 +59,18 @@ jobs:
           for case in cases:
               assert case.get("rights_status") == "pending", case.get("case_id")
               assert case.get("annotation_type") == "alpha", case.get("case_id")
-              image = Path("benchmarks/results/aim500/images") / case["filename"]
-              matte = Path("benchmarks/results/aim500/masks") / case["annotation_filename"]
+              image = root / "images" / case["filename"]
+              matte = root / "masks" / case["annotation_filename"]
               assert image.is_file(), image
               assert matte.is_file(), matte
           print("Verified 16 image/matte pairs. Rights remain pending; commercial use is not approved.")
+          print("Only the JSON metadata report will be uploaded.")
           PY
 
-      - name: Upload private candidate artifact
+      - name: Upload metadata report only
         uses: actions/upload-artifact@v4
         with:
-          name: aim500-candidates-${{ github.run_id }}
-          path: benchmarks/results/aim500/
+          name: aim500-metadata-${{ github.run_id }}
+          path: benchmarks/results/aim500/aim500-candidates.json
           if-no-files-found: error
           retention-days: 3
-          compression-level: 6
