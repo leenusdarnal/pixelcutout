@@ -1,6 +1,6 @@
 # PixelCutout model benchmark protocol
 
-**Status:** Benchmark protocol and metadata validator are in place. A project-owned 16-case synthetic suite is available for pipeline and regression checks, but no rights-approved photorealistic fixture set or measured model scores have been registered yet. See [the synthetic benchmark guide](SYNTHETIC_BENCHMARK.md) and [the 16-case acquisition checklist](BENCHMARK_FIXTURE_ACQUISITION.md).  
+**Status:** Benchmark protocol and metadata validator are in place. AIM-500 is the primary local real-photo evaluation source under its official MIT release terms; the acquisition tool preserves the upstream MIT notice and required citation, records both immutable snapshot SHAs, and requires explicit agreement acknowledgement. The new terms-gated acquisition has not yet been run; the synthetic 16-case suite remains a separate smoke/regression set. Model scores and device measurements are still pending. See [the AIM-500 acquisition checklist](BENCHMARK_FIXTURE_ACQUISITION.md) and [the synthetic benchmark guide](SYNTHETIC_BENCHMARK.md).  
 **Purpose:** Select the lightest model/runtime that meets PixelCutout's broad-subject and fine-edge quality requirements.  
 **Product constraint:** All image pixels stay local. Benchmark images are test fixtures only and must never be included in the deployed site.
 
@@ -34,7 +34,7 @@ Use the same 16 images for every model candidate. Preserve a high-quality local 
 | B15 | Difficult background | Subject and background share similar colours or texture | Subject completeness with low background leakage |
 | B16 | Occlusion / busy scene | Multiple overlapping subjects or cluttered surroundings | Intended foreground objects without background fragments |
 
-Use only images owned by the project, created for the benchmark, or licensed for this test use. Prefer public-domain, CC0, or clearly compatible permissive licences. Record creator, source URL, exact licence, and any attribution requirement. Do not use non-commercial or no-derivatives material for a benchmark that may later inform a commercial product decision.
+Use AIM-500 for the first natural-photo comparison under the official release agreement: the Dataset is stated to be MIT-licensed, the agreement says the photos came from websites with free-use licences, and photo copyright remains with original owners. The local acquisition script carries the upstream MIT notice (`Copyright (c) 2021 Jizhizi_Li`) and required IJCAI 2021 citation. Keep the raw photos/mattes local and do not redistribute them; the mirror does not supply original per-photo source URLs/licence URLs. For any additional dataset or any external redistribution/independent reuse of an AIM-500 photograph, verify the image owner and its own licence/attribution terms. Keep source images and ground-truth mattes separate from model assets and the application bundle.
 
 ## 2. Keep benchmark assets out of the application
 

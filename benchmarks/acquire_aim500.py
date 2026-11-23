@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
-"""Acquire a deterministic, local-only AIM-500 candidate set for PixelCutout.
+"""Acquire a deterministic, local-only AIM-500 benchmark candidate set.
 
-This script never uploads image pixels and never marks photo rights as approved.
-It writes candidate images/mattes and a metadata report under ignored benchmark paths.
+The official agreement requires the user to read and agree to its terms before
+access. The runner must explicitly pass --accept-release-terms; this tool does
+not accept legal terms on anyone's behalf.
+
+The dataset is loaded through Hugging Face Datasets' supported default branch
+path because supplying revision= disables the exported-Parquet path in the
+installed Datasets loader. We resolve and compare both main and
+refs/convert/parquet SHAs before and after loading. If either branch changes
+during loading, acquisition stops before writing selected cases.
 """
 from __future__ import annotations
 
@@ -16,9 +23,40 @@ from pathlib import Path
 from typing import Any, Iterable
 
 DATASET_ID = "nobg/AIM-500"
-DATASET_VERSION = "Hugging Face dataset snapshot; record revision when available"
+DATASET_REVISION_REF = "refs/convert/parquet"
 DATASET_PAGE = "https://huggingface.co/datasets/nobg/AIM-500"
+OFFICIAL_PROJECT = "https://github.com/JizhiziLi/AIM"
+UPSTREAM_LICENSE_URL = "https://github.com/JizhiziLi/AIM/blob/master/LICENSE"
 DATASET_AGREEMENT = "https://jizhizili.github.io/files/aim_dataset_agreement/AIM-500_Dataset_Release_Agreement.pdf"
+PAPER_URL = "https://doi.org/10.24963/ijcai.2021/111"
+PAPER_CITATION = (
+    "Li, Jizhizi, Jing Zhang, and Dacheng Tao. "
+    "Deep Automatic Natural Image Matting. Proceedings of the 30th "
+    "International Joint Conference on Artificial Intelligence (IJCAI), 2021, "
+    "pp. 800–806. https://doi.org/10.24963/ijcai.2021/111"
+)
+MIT_LICENSE_TEXT = """MIT License
+
+Copyright (c) 2021 Jizhizi_Li
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
 TARGET_QUOTAS = {
     "animal": 3,
     "portrait": 3,
@@ -56,7 +94,10 @@ def select_candidates(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
 
     selected: list[dict[str, Any]] = []
     for category, quota in TARGET_QUOTAS.items():
-        candidates = sorted(by_category.get(category, []), key=lambda item: item["image_name"])
+        candidates = sorted(
+            by_category.get(category, []),
+            key=lambda item: item["image_name"],
+        )
         if len(candidates) < quota:
             raise ValueError(
                 f"Dataset has only {len(candidates)} rows for {category}; need {quota}"
@@ -64,9 +105,11 @@ def select_candidates(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
 
         remaining = list(candidates)
         chosen: list[dict[str, Any]] = []
-        # Prefer type diversity in a deterministic order, then fill any remaining slots.
         for wanted_type in TYPE_ORDER:
-            match = next((item for item in remaining if item.get("type") == wanted_type), None)
+            match = next(
+                (item for item in remaining if item.get("type") == wanted_type),
+                None,
+            )
             if match is not None and len(chosen) < quota:
                 chosen.append(match)
                 remaining.remove(match)
@@ -87,17 +130,91 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
-    """Write lossless RGB PNGs, 8-bit grayscale alpha PNGs, and pending metadata."""
+def resolve_revisions(api: Any) -> tuple[str, str]:
+    """Return immutable main and generated-Parquet commit SHAs."""
+    main_revision = api.dataset_info(
+        repo_id=DATASET_ID,
+        revision="main",
+    ).sha
+    parquet_revision = api.dataset_info(
+        repo_id=DATASET_ID,
+        revision=DATASET_REVISION_REF,
+    ).sha
+    for label, revision in (
+        ("main", main_revision),
+        (DATASET_REVISION_REF, parquet_revision),
+    ):
+        if not re.fullmatch(r"[a-f0-9]{40}", revision or ""):
+            raise RuntimeError(
+                f"Hugging Face did not return a full immutable commit SHA for {label}"
+            )
+    return main_revision, parquet_revision
+
+
+def write_compliance_files(
+    output_root: Path,
+    main_revision: str,
+    parquet_revision: str,
+) -> None:
+    """Keep the upstream MIT notice and required dataset citation with local pixels."""
+    output_root.mkdir(parents=True, exist_ok=True)
+    (output_root / "LICENSE-AIM-500.txt").write_text(
+        MIT_LICENSE_TEXT,
+        encoding="utf-8",
+    )
+    citation = (
+        "AIM-500 dataset citation\n\n"
+        f"{PAPER_CITATION}\n\n"
+        f"Official project: {OFFICIAL_PROJECT}\n"
+        f"Dataset release agreement: {DATASET_AGREEMENT}\n"
+        f"Dataset main snapshot: {DATASET_ID}@{main_revision}\n"
+        f"Dataset Parquet snapshot: {DATASET_ID}@{parquet_revision} "
+        f"({DATASET_REVISION_REF})\n"
+        "The official release agreement states the dataset is under MIT and that "
+        "the photographs were collected from websites with free-use licences; "
+        "it also states that photograph copyright remains with the original owners.\n"
+    )
+    (output_root / "CITATION-AIM-500.txt").write_text(
+        citation,
+        encoding="utf-8",
+    )
+
+
+def write_candidate_set(
+    output_root: Path,
+    rows: Iterable[dict[str, Any]],
+    main_revision: str,
+    parquet_revision: str,
+    release_terms_accepted: bool = False,
+) -> dict[str, Any]:
+    """Write lossless RGB PNGs, alpha PNGs, compliance notices, and metadata."""
+    if not release_terms_accepted:
+        raise ValueError(
+            "Please read the AIM-500 release agreement and pass "
+            "--accept-release-terms before acquiring or using these files."
+        )
+    for label, revision in (
+        ("main", main_revision),
+        (DATASET_REVISION_REF, parquet_revision),
+    ):
+        if not re.fullmatch(r"[a-f0-9]{40}", revision or ""):
+            raise ValueError(
+                f"Dataset {label} revision must be a full 40-character commit SHA"
+            )
+
     try:
         from PIL import Image
     except ImportError as error:
-        raise RuntimeError("Install the local benchmark requirements: python -m pip install -r benchmarks/requirements.txt") from error
+        raise RuntimeError(
+            "Install the local benchmark requirements: "
+            "python -m pip install -r benchmarks/requirements.txt"
+        ) from error
 
     image_dir = output_root / "images"
     mask_dir = output_root / "masks"
     image_dir.mkdir(parents=True, exist_ok=True)
     mask_dir.mkdir(parents=True, exist_ok=True)
+    write_compliance_files(output_root, main_revision, parquet_revision)
 
     cases = []
     for row in rows:
@@ -112,7 +229,6 @@ def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> di
         if image is None or mask is None:
             raise ValueError(f"{case_id}: source image or alpha matte is missing")
 
-        # Convert decoded RGB pixels to PNG without lossy recompression.
         image_rgb = image.convert("RGB")
         alpha = mask.convert("L")
         if image_rgb.size != alpha.size:
@@ -136,27 +252,84 @@ def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> di
             "annotation_sha256": sha256(mask_path),
             "image_bytes": image_path.stat().st_size,
             "annotation_bytes": mask_path.stat().st_size,
-            "rights_status": "pending",
-            "rights_note": (
-                "Dataset card does not provide per-image source/licence evidence. "
-                "Verify original photograph rights before commercial benchmark use."
+            "dataset_license": "MIT",
+            "dataset_license_copyright": "Copyright (c) 2021 Jizhizi_Li",
+            "photo_copyright": "Original image owners; no transfer or re-licensing is claimed",
+            "photo_source_license_note": (
+                "The official release agreement says dataset images were collected "
+                "from websites with free-use licences. The mirror does not supply "
+                "original per-photo landing-page or licence URLs."
             ),
+            "rights_status": "dataset_mit_terms_applied_local_benchmark_only",
+            "redistribution_status": "not_redistributed_by_this_workflow",
+            "attribution": PAPER_CITATION,
         })
 
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "dataset": DATASET_ID,
+        "dataset_revision": main_revision,
+        "dataset_parquet_revision": parquet_revision,
+        "dataset_parquet_revision_ref": DATASET_REVISION_REF,
         "dataset_page": DATASET_PAGE,
-        "dataset_agreement": DATASET_AGREEMENT,
-        "split": "test",
-        "selection": "deterministic category quotas; type diversity preferred",
+        "official_project": OFFICIAL_PROJECT,
+        "upstream_license_url": UPSTREAM_LICENSE_URL,
+        "dataset_license": {
+            "spdx": "MIT",
+            "copyright": "Copyright (c) 2021 Jizhizi_Li",
+            "notice_file": "LICENSE-AIM-500.txt",
+            "notice_included": True,
+            "terms_source": UPSTREAM_LICENSE_URL,
+        },
+        "release_agreement": {
+            "url": DATASET_AGREEMENT,
+            "dataset_license_statement": "The Dataset is under MIT license.",
+            "image_source_statement": (
+                "All the images in the Dataset are collected from websites with free use licenses."
+            ),
+            "photo_copyright_statement": (
+                "The copyright of the images in the Dataset belongs to the original owners."
+            ),
+            "citation_required_for_research_documents": True,
+            "indemnification_clause_present": True,
+            "access_terms_acknowledged": True,
+            "acknowledgement_method": (
+                "Explicit user-supplied --accept-release-terms flag"
+            ),
+        },
+        "citation": {
+            "required": True,
+            "file": "CITATION-AIM-500.txt",
+            "text": PAPER_CITATION,
+            "url": PAPER_URL,
+        },
+        "acquisition": {
+            "split": "test",
+            "selection": "deterministic category quotas; type diversity preferred",
+            "dataset_revision_pinned": main_revision,
+            "mirror_revision_ref": DATASET_REVISION_REF,
+            "mirror_revision_pinned": parquet_revision,
+            "pixels_uploaded": False,
+            "raw_pixels_redistributed": False,
+            "source_image_level_metadata": (
+                "The mirror does not include original per-photo landing-page "
+                "URLs or individual source licence URLs."
+            ),
+            "intended_use": (
+                "Local model evaluation; preserve source copyright and include "
+                "MIT notice/citation."
+            ),
+        },
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
-        "rights_status": "pending",
-        "commercial_use_approved": False,
+        "rights_status": "dataset_mit_terms_applied_local_benchmark_only",
+        "raw_image_redistribution_approved": False,
         "cases": cases,
     }
     report_path = output_root / "aim500-candidates.json"
-    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    report_path.write_text(
+        json.dumps(report, indent=2) + "\n",
+        encoding="utf-8",
+    )
     return report
 
 
@@ -168,23 +341,58 @@ def main() -> int:
         default=Path("benchmarks/results/aim500"),
         help="Local output directory (default: benchmarks/results/aim500)",
     )
+    parser.add_argument(
+        "--accept-release-terms",
+        action="store_true",
+        help=(
+            "Confirm that you personally read and agree to the official AIM-500 "
+            "release agreement, including its access conditions and indemnification clause."
+        ),
+    )
     args = parser.parse_args()
+    if not args.accept_release_terms:
+        parser.error(
+            "Download blocked. Read the AIM-500 release agreement and rerun with "
+            "--accept-release-terms only if you agree to its terms."
+        )
 
     try:
         from datasets import load_dataset
+        from huggingface_hub import HfApi
     except ImportError as error:
         parser.error(
             "Install local-only dependencies first: "
             "python -m pip install -r benchmarks/requirements.txt"
         )
 
-    print(f"Loading {DATASET_ID} test split. This downloads dataset files locally.")
+    api = HfApi()
+    print("Resolving immutable AIM-500 main and Parquet snapshot SHAs.")
+    main_before, parquet_before = resolve_revisions(api)
+
+    # Important: don't pass revision= here. Datasets 4.x uses its exported
+    # Parquet path only for the normal main branch and disables that path when
+    # a custom revision is supplied. The library internally pins the Parquet
+    # branch to a commit SHA while constructing the Dataset.
     dataset = load_dataset(DATASET_ID, split="test")
+
+    main_after, parquet_after = resolve_revisions(api)
+    if (main_before, parquet_before) != (main_after, parquet_after):
+        raise RuntimeError(
+            "AIM-500 main or Parquet snapshot changed while loading. "
+            "No candidates were written; rerun to obtain a stable snapshot."
+        )
+
     rows = select_candidates(dataset)
-    report = write_candidate_set(args.output, rows)
-    print(f"Wrote {len(report['cases'])} candidate image/matte pairs to {args.output}")
-    print(f"Metadata report: {args.output / 'aim500-candidates.json'}")
-    print("Rights status: PENDING — this is not commercial-use clearance.")
+    report = write_candidate_set(
+        args.output,
+        rows,
+        main_before,
+        parquet_before,
+        release_terms_accepted=True,
+    )
+    print(f"Wrote {len(report['cases'])} image/matte pairs to {args.output}")
+    print("Included upstream MIT notice and IJCAI 2021 citation.")
+    print("Pixels remain local; original photo copyrights remain with their owners.")
     return 0
 
 

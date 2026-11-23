@@ -1,93 +1,69 @@
-# Benchmark manifest
+# Benchmark fixtures
 
-This manifest tracks the local image fixtures described in [MODEL_BENCHMARK.md](../docs/MODEL_BENCHMARK.md). The committed manifest contains metadata only; source images and ground-truth masks are intentionally excluded from Git and the app build.
+The committed `manifest.json` tracks individually provenance-checked custom fixtures. Source images and ground-truth masks are intentionally excluded from Git and the app build. AIM-500 uses a separate local candidate report because the mirror does not expose the original per-photo landing pages or individual licence URLs.
+
+## Primary real-photo source: AIM-500
+
+AIM-500 is released by the authors as a 500-image natural-image matting test set with manually labelled alpha mattes. The official release agreement states that the Dataset is under the MIT licence, the images were collected from websites with free-use licences, and copyright in the photographs remains with their original owners. It asks research documents and papers using the Dataset to cite the IJCAI 2021 work and includes an indemnification clause.
+
+PixelCutout's acquisition tool follows the terms as follows:
+
+- Copies the upstream MIT notice, including `Copyright (c) 2021 Jizhizi_Li`, into `LICENSE-AIM-500.txt`.
+- Writes the required Li, Zhang & Tao IJCAI 2021 reference into `CITATION-AIM-500.txt`.
+- Records the agreement, original-photo copyright statement, item IDs, dimensions, separate SHA-256 hashes, and source-metadata limitation in `aim500-candidates.json`.
+- Captures the full commit SHA of the dataset's `main` and generated `refs/convert/parquet` branches before and after loading. It aborts if either changes while data is loaded.
+- Stores RGB and alpha PNGs under ignored `benchmarks/results/aim500/`. The workflow uploads metadata only, never image or matte binaries.
+
+Read and agree to the [official AIM-500 Dataset v1.0 Release Agreement](https://jizhizili.github.io/files/aim_dataset_agreement/AIM-500_Dataset_Release_Agreement.pdf) **yourself before downloading**. The agreement has conditions beyond the MIT notice, including an indemnification clause. PixelCutout does not accept those terms on your behalf; the local acquisition script requires an explicit `--accept-release-terms` flag and the workflow dispatch asks for an explicit confirmation.
+
+Keep the upstream MIT notice with any copy or substantial portion of the dataset, and cite Li, Zhang & Tao (IJCAI 2021) in research documents/papers that use it.
+
+**Photo copyright remains with the original owners.** The mirror does not give PixelCutout per-photo original landing pages or individual licence URLs. The project therefore uses the acquired files only for local model evaluation and does not redistribute raw photos/mattes, commit them, upload them as workflow artifacts, or include them in the deployed app. The MIT notice is not a transfer of photographer copyright. Before external redistribution or independent reuse of any photograph, trace its original source and comply with the source owner's licence and attribution conditions.
+
+## Acquire AIM-500 locally
+
+Install the optional local-only dependencies:
+
+```sh
+python -m pip install -r benchmarks/requirements.txt
+```
+
+After you have read and agreed to the official release agreement, run:
+
+```sh
+python benchmarks/acquire_aim500.py --accept-release-terms
+```
+
+The generator selects 16 deterministic candidates across all seven categories and prefers a mix of `SO`, `STM`, and `NS` types. It loads the test split through the supported Hugging Face Datasets default-main path. This is important: Datasets 4.x enables the exported-Parquet path for its default main revision and disables that path if a custom `revision=` is supplied. PixelCutout captures both the main and Parquet-branch SHAs before and after loading, then aborts if either branch moved during acquisition. Both revisions are recorded in the JSON report and citation file.
+
+The output contains lossless RGB PNGs, 8-bit grayscale alpha PNGs, a metadata report, the MIT notice, and the paper citation under `benchmarks/results/aim500/`. The `mask.convert("L")` operation preserves the mirror's grayscale matte values; do not binarise alpha mattes.
+
+The 16 rows are category-balanced candidates, not yet manually assigned to all 16 visual challenge labels. Inspect them before claiming a sample represents hair, thin mesh, lace, backlighting, or another specific edge case. Keep raw images and model outputs under ignored local directories.
+
+## Local storage and privacy
+
+- AIM-500 candidate files: `benchmarks/results/aim500/images/` and `benchmarks/results/aim500/masks/`.
+- Project-owned synthetic smoke files: `benchmarks/results/synthetic-v1/images/` and `benchmarks/results/synthetic-v1/masks/`.
+- Both generated result sets and raw results are under the git-ignored `benchmarks/results/` folder.
+- Never copy these image/matte files into `static/`, `public/`, an app-imported source directory, or Git.
+- Do not upload image or mask pixels to any remote service.
+- Keep synthetic scores separate from AIM-500 natural-photo scores.
 
 ## Project-owned synthetic smoke set
 
-For a reproducible 16-case set with exact procedurally generated alpha mattes, see [the synthetic benchmark guide](../docs/SYNTHETIC_BENCHMARK.md). Generate it locally with:
+For a deterministic 16-case set with exact procedurally generated alpha mattes, see [the synthetic benchmark guide](../docs/SYNTHETIC_BENCHMARK.md). Generate it locally with:
 
 ```sh
 python -m pip install "Pillow>=10,<13"
 python benchmarks/generate_synthetic.py
 ```
 
-The RGB inputs, mattes, and hash manifest are written under ignored `benchmarks/results/synthetic-v1/`. The suite uses no third-party images and is useful for pipeline checks, alpha-matte regression tests, and controlled synthetic comparisons. It is **not** a photorealistic benchmark and must not be pooled with natural-image scores or used alone to choose the production model.
+This suite is useful for pipeline checks and controlled synthetic regression tests. It is not a photorealistic benchmark and must not be pooled with AIM-500 natural-photo metrics or used alone to choose the production model.
 
-## Approved source path
+## Individually approved custom fixtures
 
-Start with AIM-500 for natural images and soft alpha mattes. Read its [official release agreement](https://jizhizili.github.io/files/aim_dataset_agreement/AIM-500_Dataset_Release_Agreement.pdf) and follow the acquisition checklist. The agreement says the dataset is MIT-licensed but also says underlying image copyrights remain with original owners; verify each image's original licence and keep that evidence in the manifest.
+For any additional image added to the committed `manifest.json`, record its exact source landing page, creator/photographer, image-specific licence and URL, annotation source/licence, agreement terms, attribution, dimensions, and SHA-256 hashes. Do not invent a provenance value when it is missing. Keep the photograph and annotation rights distinct; the annotation may have a different rights holder from the photograph.
 
-Open Images V7 can fill a small number of difficult object cases only when its individual image licence is verified. Its instance masks are binary, not soft alpha; report those cases separately. Do not use non-commercial datasets or annotations for the commercial-use benchmark.
-
-## Local storage
-
-- Put RGB source images in `benchmarks/images/`.
-- Put the matching ground-truth alpha mattes or binary masks in `benchmarks/masks/`.
-- Both folders, plus `benchmarks/results/`, are git-ignored. Never copy these files to `static/`, `public/`, or an app-imported source directory.
-- Do not upload image or mask pixels to a remote service.
-
-## Add a case
-
-1. Read the dataset agreement and any access conditions.
-2. Select an actual match for the assigned B01-B16 challenge. Do not fill a slot with a poor match.
-3. Record the original image landing page, photographer/creator, exact image licence, licence URL, dataset agreement, annotation source and annotation licence. The image and its mask may have different rights owners.
-4. Mark `license_status` as `approved` only after both image and annotation rights are verified. Keep unresolved items as `pending`; do not count them as complete. Use `excluded` for items rejected after review.
-5. Record a separate SHA-256 and dimensions for the image and its annotation. The alpha/binary annotation must have the same dimensions as the source image.
-6. Run `npm run benchmark:validate` for structural, provenance, path and hash checks. When all 16 cases are rights-approved, run `npm run benchmark:validate -- --require-complete`. For the primary soft-alpha matting scorecard, run `npm run benchmark:validate -- --require-alpha-complete`.
-
-Example entry (illustrative only; replace every placeholder with verified source data):
-
-```json
-{
-  "id": "B01",
-  "filename": "b01-person-hair.png",
-  "source": "AIM-500 v1.0",
-  "creator": "Original photographer from source metadata",
-  "license": "Exact image-specific licence",
-  "sha256": "64-character lowercase image SHA-256",
-  "width": 1920,
-  "height": 1080,
-  "dataset_name": "AIM-500",
-  "dataset_version": "v1.0",
-  "dataset_item_id": "exact upstream image ID or filename",
-  "source_landing_url": "https://original-image-page.example/",
-  "image_license_url": "https://creativecommons.org/licenses/by/4.0/",
-  "dataset_agreement_url": "https://jizhizili.github.io/files/aim_dataset_agreement/AIM-500_Dataset_Release_Agreement.pdf",
-  "annotation_filename": "b01-person-hair-alpha.png",
-  "annotation_type": "alpha",
-  "annotation_license": "Exact annotation licence",
-  "annotation_license_url": "https://annotation-source.example/terms",
-  "annotation_sha256": "64-character lowercase annotation SHA-256",
-  "annotation_width": 1920,
-  "annotation_height": 1080,
-  "license_status": "pending",
-  "rights_checked_on": null,
-  "attribution": "Exact required attribution, or explicitly state none is required",
-  "notes": "Why this image meets B01 and known limitations"
-}
-```
-
-The validator requires the image and annotation provenance fields, verifies all HTTPS source/licence/agreement links, checks both local files and SHA-256 digests, and rejects path traversal or dimension mismatches. A `pending` record is allowed during local review, but `--require-complete` requires all 16 IDs and `license_status: "approved"`; `--require-alpha-complete` additionally requires all 16 annotations to be soft alpha mattes. `rights_checked_on` must be a real `YYYY-MM-DD` date for approved items and `null` for pending items.
+The dependency-free validator checks local file paths, hashes, dimensions, HTTPS provenance URLs, annotation type, and approval metadata. Use `npm run benchmark:validate` for structural checks; `--require-complete` and `--require-alpha-complete` are gates for the separately maintained 16-case individually approved fixture manifest, not for the AIM-500 local candidate report.
 
 Use `annotation_type: "alpha"` for a soft foreground-opacity matte and `"binary"` for a binary segmentation mask. Never pool binary-mask scores with soft-alpha matting metrics.
-
-Generate a digest locally with Node.js:
-
-```sh
-node --input-type=module -e "import {createHash} from 'node:crypto'; import {readFileSync} from 'node:fs'; console.log(createHash('sha256').update(readFileSync(process.argv[1])).digest('hex'))" benchmarks/images/person-hair.jpg
-```
-
-The validator uses only Node.js built-ins. It does not fetch URLs or upload images.
-
-## Acquire a local AIM-500 candidate set
-
-The local acquisition tool selects 16 reproducible candidates across the seven AIM-500 categories, preferring a mix of `SO`, `STM`, and `NS` types. It downloads the dataset through Hugging Face Datasets, writes decoded RGB images as lossless PNG and alpha mattes as 8-bit grayscale PNG, and creates `benchmarks/results/aim500/aim500-candidates.json` with dimensions and SHA-256 hashes.
-
-Install the optional local-only dependencies and run:
-
-```sh
-python -m pip install -r benchmarks/requirements.txt
-python benchmarks/acquire_aim500.py
-```
-
-This is a candidate-set acquisition step, not rights clearance. The generated report explicitly keeps every item `pending`; it does not populate `manifest.json`, because the mirrored rows do not provide per-photo source/licence evidence. Verify each original photograph and the annotation terms before manually registering an approved fixture. The downloaded pixels and report remain under ignored `benchmarks/results/`; never commit them or upload them to a service.

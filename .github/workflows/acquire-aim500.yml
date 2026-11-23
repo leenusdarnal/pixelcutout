@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_download:
-        description: "Confirm fetching AIM-500 candidates. Only the metadata report is uploaded; image and matte files are not."
+        description: "I have personally read and agree to the official AIM-500 release agreement, including its access conditions and indemnification clause. The tool preserves the MIT notice and citation; images/mattes remain local to this runner."
         required: true
         type: boolean
         default: false
@@ -41,7 +41,7 @@ jobs:
         run: python -m unittest discover -s benchmarks -p 'test_*.py' -v
 
       - name: Download and extract AIM-500 candidates
-        run: python benchmarks/acquire_aim500.py --output benchmarks/results/aim500
+        run: python benchmarks/acquire_aim500.py --accept-release-terms --output benchmarks/results/aim500
 
       - name: Verify candidate report and local image/matte pairs
         run: |
@@ -54,16 +54,32 @@ jobs:
           report = json.loads(report_path.read_text(encoding="utf-8"))
           cases = report.get("cases", [])
           assert len(cases) == 16, f"Expected 16 candidate pairs, got {len(cases)}"
-          assert report.get("rights_status") == "pending"
-          assert report.get("commercial_use_approved") is False
+          assert report.get("rights_status") == "dataset_mit_terms_applied_local_benchmark_only"
+          assert report["dataset_license"]["spdx"] == "MIT"
+          assert report["dataset_license"]["notice_included"] is True
+          assert report["citation"]["required"] is True
+          assert report["acquisition"]["pixels_uploaded"] is False
+          assert report["acquisition"]["raw_pixels_redistributed"] is False
+          assert report["release_agreement"]["access_terms_acknowledged"] is True
+          assert report["release_agreement"]["indemnification_clause_present"] is True
+          assert report["release_agreement"]["acknowledgement_method"] == "Explicit user-supplied --accept-release-terms flag"
+          assert report["release_agreement"]["citation_required_for_research_documents"] is True
+          assert (root / report["dataset_license"]["notice_file"]).is_file()
+          assert (root / report["citation"]["file"]).is_file()
+          assert report["dataset_revision"] == report["acquisition"]["dataset_revision_pinned"]
+          assert report["dataset_parquet_revision"] == report["acquisition"]["mirror_revision_pinned"]
+          assert report["dataset_parquet_revision_ref"] == "refs/convert/parquet"
           for case in cases:
-              assert case.get("rights_status") == "pending", case.get("case_id")
+              assert case.get("rights_status") == "dataset_mit_terms_applied_local_benchmark_only", case.get("case_id")
+              assert case.get("dataset_license") == "MIT", case.get("case_id")
               assert case.get("annotation_type") == "alpha", case.get("case_id")
+              assert "original owners" in case.get("photo_copyright", "").lower()
               image = root / "images" / case["filename"]
               matte = root / "masks" / case["annotation_filename"]
               assert image.is_file(), image
               assert matte.is_file(), matte
-          print("Verified 16 image/matte pairs. Rights remain pending; commercial use is not approved.")
+          print("Verified 16 image/matte pairs and bundled MIT notice/citation.")
+          print("Photo copyright remains with original owners; raw pixels remain local.")
           print("Only the JSON metadata report will be uploaded.")
           PY
 
