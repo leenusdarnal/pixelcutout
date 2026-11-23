@@ -1,6 +1,6 @@
 # Model benchmark fixture acquisition plan
 
-**Status:** A 16-case local AIM-500 acquisition path is implemented. It pins the mirror snapshot, includes the upstream MIT notice and paper citation, and keeps all source pixels local. No image binaries are committed or uploaded.  
+**Status:** The 16-case local AIM-500 acquisition path is implemented and CI-verified. It records the main and generated Parquet snapshot SHAs, includes the upstream MIT notice and paper citation, and requires explicit acceptance of the release agreement. The new terms-gated acquisition has not yet been run; no image binaries are committed or uploaded.  
 **Goal:** Acquire a small, traceable 16-image set for comparing MODNet with general-purpose alternatives on identical inputs.  
 **Storage rule:** Source images and ground-truth masks stay local in ignored benchmark folders. Never place them in `static/`, `public/`, app source, Git, or deployment artifacts.
 
