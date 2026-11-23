@@ -8,15 +8,21 @@ Start with AIM-500 for natural images and soft alpha mattes. Read its [official 
 
 Open Images V7 can fill a small number of difficult object cases only when its individual image licence is verified. Its instance masks are binary, not soft alpha; report those cases separately. Do not use non-commercial datasets or annotations for the commercial-use benchmark.
 
+## Local storage
+
+- Put RGB source images in `benchmarks/images/`.
+- Put the matching ground-truth alpha mattes or binary masks in `benchmarks/masks/`.
+- Both folders, plus `benchmarks/results/`, are git-ignored. Never copy these files to `static/`, `public/`, or an app-imported source directory.
+- Do not upload image or mask pixels to a remote service.
+
 ## Add a case
 
 1. Read the dataset agreement and any access conditions.
 2. Select an actual match for the assigned B01-B16 challenge. Do not fill a slot with a poor match.
 3. Record the original image landing page, photographer/creator, exact image licence, licence URL, dataset agreement, annotation source and annotation licence. The image and its mask may have different rights owners.
-4. Mark `license_status` as `approved` only after both image and annotation rights are verified. Keep unresolved items as `pending` and out of the approved set.
-5. Put RGB inputs in `benchmarks/images/` and ground-truth mattes/masks in `benchmarks/masks/`; both folders are git-ignored.
-6. Add a manifest entry with the existing validator fields plus the provenance fields below.
-7. Run `npm run benchmark:validate`. When all 16 cases are populated, run `npm run benchmark:validate -- --require-complete`.
+4. Mark `license_status` as `approved` only after both image and annotation rights are verified. Keep unresolved items as `pending`; do not count them as complete. Use `excluded` for items rejected after review.
+5. Record a separate SHA-256 and dimensions for the image and its annotation. The alpha/binary annotation must have the same dimensions as the source image.
+6. Run `npm run benchmark:validate` for structural, provenance, path and hash checks. When all 16 cases are rights-approved, run `npm run benchmark:validate -- --require-complete`. For the primary soft-alpha matting scorecard, run `npm run benchmark:validate -- --require-alpha-complete`.
 
 Example entry (illustrative only; replace every placeholder with verified source data):
 
@@ -27,7 +33,7 @@ Example entry (illustrative only; replace every placeholder with verified source
   "source": "AIM-500 v1.0",
   "creator": "Original photographer from source metadata",
   "license": "Exact image-specific licence",
-  "sha256": "replace-with-64-character-file-digest",
+  "sha256": "64-character lowercase image SHA-256",
   "width": 1920,
   "height": 1080,
   "dataset_name": "AIM-500",
@@ -39,15 +45,20 @@ Example entry (illustrative only; replace every placeholder with verified source
   "annotation_filename": "b01-person-hair-alpha.png",
   "annotation_type": "alpha",
   "annotation_license": "Exact annotation licence",
-  "annotation_license_url": "https://example.org/annotation-terms",
+  "annotation_license_url": "https://annotation-source.example/terms",
+  "annotation_sha256": "64-character lowercase annotation SHA-256",
+  "annotation_width": 1920,
+  "annotation_height": 1080,
   "license_status": "pending",
   "rights_checked_on": null,
-  "attribution": "Exact required attribution, if any",
+  "attribution": "Exact required attribution, or explicitly state none is required",
   "notes": "Why this image meets B01 and known limitations"
 }
 ```
 
-The current validator enforces the original required metadata, local image existence, dimensions and SHA-256. It does **not yet** enforce the additional rights fields or verify mask files; keep those as explicit manual gates until the validator is extended. Use `annotation_type: "alpha"` for a soft matte and `"binary"` for a binary segmentation mask. Never pool their scores as equivalent measures.
+The validator requires the image and annotation provenance fields, verifies all HTTPS source/licence/agreement links, checks both local files and SHA-256 digests, and rejects path traversal or dimension mismatches. A `pending` record is allowed during local review, but `--require-complete` requires all 16 IDs and `license_status: "approved"`; `--require-alpha-complete` additionally requires all 16 annotations to be soft alpha mattes. `rights_checked_on` must be a real `YYYY-MM-DD` date for approved items and `null` for pending items.
+
+Use `annotation_type: "alpha"` for a soft foreground-opacity matte and `"binary"` for a binary segmentation mask. Never pool binary-mask scores with soft-alpha matting metrics.
 
 Generate a digest locally with Node.js:
 
