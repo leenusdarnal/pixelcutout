@@ -7,7 +7,7 @@ The committed \`manifest.json\` tracks individually provenance-checked custom fi
 AIM-500 is released by the authors as a 500-image natural-image matting test set with manually labelled alpha mattes. The official release agreement states that the Dataset is under the MIT licence, the images were collected from websites with free-use licences, and copyright in the photographs remains with the original owners. It asks research documents/papers using the Dataset to cite the IJCAI 2021 work and includes an indemnification clause.
 
 PixelCutout's acquisition tool follows those terms:
-- It pins the inspected Hugging Face mirror commit \`18df14dba162fd06c0a22c9ac54dfaab6c279d1f\` rather than loading floating \`main\`.
+- It resolves the Hugging Face \`refs/convert/parquet\` snapshot to a full immutable commit SHA before loading the data, then records that exact SHA in the report and citation file rather than loading floating \`main\`.
 - It copies the upstream AIM repository MIT notice, including \`Copyright (c) 2021 Jizhizi_Li\`, into \`LICENSE-AIM-500.txt\`.
 - It writes the required IJCAI 2021 reference into \`CITATION-AIM-500.txt\`.
 - It records the agreement, original-photo copyright statement, source metadata limitation, item IDs, dimensions, and separate SHA-256 hashes in \`aim500-candidates.json\`.
