@@ -92,3 +92,15 @@ jobs:
           path: benchmarks/results/aim500/aim500-candidates.json
           if-no-files-found: error
           retention-days: 3
+      - name: Upload short-retention local fixture package
+        uses: actions/upload-artifact@v4
+        with:
+          name: aim500-local-fixtures-${{ github.run_id }}
+          path: |
+            benchmarks/results/aim500/images/
+            benchmarks/results/aim500/masks/
+            benchmarks/results/aim500/LICENSE-AIM-500.txt
+            benchmarks/results/aim500/CITATION-AIM-500.txt
+            benchmarks/results/aim500/aim500-candidates.json
+          if-no-files-found: error
+          retention-days: 1
