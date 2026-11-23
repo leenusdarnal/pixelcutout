@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 DATASET_ID = "nobg/AIM-500"
-DATASET_REVISION = "18df14dba162fd06c0a22c9ac54dfaab6c279d1f"
+DATASET_REVISION_REF = "refs/convert/parquet"
 DATASET_PAGE = "https://huggingface.co/datasets/nobg/AIM-500"
 OFFICIAL_PROJECT = "https://github.com/JizhiziLi/AIM"
 UPSTREAM_LICENSE_URL = "https://github.com/JizhiziLi/AIM/blob/master/LICENSE"
@@ -121,7 +121,7 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def write_compliance_files(output_root: Path) -> None:
+def write_compliance_files(output_root: Path, dataset_revision: str) -> None:
     """Keep the upstream MIT notice and required dataset citation with local pixels."""
     output_root.mkdir(parents=True, exist_ok=True)
     (output_root / "LICENSE-AIM-500.txt").write_text(
@@ -132,7 +132,7 @@ def write_compliance_files(output_root: Path) -> None:
         f"{PAPER_CITATION}\n\n"
         f"Official project: {OFFICIAL_PROJECT}\n"
         f"Dataset release agreement: {DATASET_AGREEMENT}\n"
-        f"Dataset mirror snapshot: {DATASET_ID}@{DATASET_REVISION}\n"
+        f"Dataset mirror snapshot: {DATASET_ID}@{dataset_revision} ({DATASET_REVISION_REF})\n"
         "The official release agreement states the dataset is under MIT and that "
         "the photographs were collected from websites with free-use licences; "
         "it also states that photograph copyright remains with the original owners.\n"
@@ -140,7 +140,7 @@ def write_compliance_files(output_root: Path) -> None:
     (output_root / "CITATION-AIM-500.txt").write_text(citation, encoding="utf-8")
 
 
-def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
+def write_candidate_set(\n    output_root: Path, rows: Iterable[dict[str, Any]], dataset_revision: str\n) -> dict[str, Any]:
     """Write lossless RGB PNGs, grayscale alpha PNGs, and MIT-compliant metadata."""
     try:
         from PIL import Image
@@ -154,7 +154,7 @@ def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> di
     mask_dir = output_root / "masks"
     image_dir.mkdir(parents=True, exist_ok=True)
     mask_dir.mkdir(parents=True, exist_ok=True)
-    write_compliance_files(output_root)
+    if not re.fullmatch(r"[a-f0-9]{40}", dataset_revision):\n        raise ValueError("Dataset revision must be a full 40-character commit SHA")\n    write_compliance_files(output_root, dataset_revision)
 
     cases = []
     for row in rows:
@@ -210,7 +210,7 @@ def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> di
     report = {
         "schema_version": 2,
         "dataset": DATASET_ID,
-        "dataset_revision": DATASET_REVISION,
+        "dataset_revision": dataset_revision,\n        "dataset_revision_ref": DATASET_REVISION_REF,
         "dataset_page": DATASET_PAGE,
         "official_project": OFFICIAL_PROJECT,
         "upstream_license_url": UPSTREAM_LICENSE_URL,
@@ -243,7 +243,7 @@ def write_candidate_set(output_root: Path, rows: Iterable[dict[str, Any]]) -> di
         "acquisition": {
             "split": "test",
             "selection": "deterministic category quotas; type diversity preferred",
-            "mirror_revision_pinned": DATASET_REVISION,
+            "mirror_revision_ref": DATASET_REVISION_REF,\n            "mirror_revision_pinned": dataset_revision,
             "pixels_uploaded": False,
             "raw_pixels_redistributed": False,
             "source_image_level_metadata": (
@@ -274,6 +274,7 @@ def main() -> int:
 
     try:
         from datasets import load_dataset
+        from huggingface_hub import HfApi
     except ImportError as error:
         parser.error(
             "Install local-only dependencies first: "
@@ -281,16 +282,26 @@ def main() -> int:
         )
 
     print(
-        f"Loading {DATASET_ID}@{DATASET_REVISION} test split. "
+        f"Resolving {DATASET_ID}@{DATASET_REVISION_REF} to an immutable snapshot."
+    )
+    snapshot = HfApi().dataset_info(
+        repo_id=DATASET_ID,
+        revision=DATASET_REVISION_REF,
+    )
+    dataset_revision = snapshot.sha
+    if not re.fullmatch(r"[a-f0-9]{40}", dataset_revision or ""):
+        raise RuntimeError("Hugging Face did not return a full immutable dataset commit SHA")
+    print(
+        f"Loading {DATASET_ID}@{dataset_revision} test split. "
         "This downloads dataset files locally."
     )
     dataset = load_dataset(
         DATASET_ID,
-        revision=DATASET_REVISION,
+        revision=dataset_revision,
         split="test",
     )
     rows = select_candidates(dataset)
-    report = write_candidate_set(args.output, rows)
+    report = write_candidate_set(args.output, rows, dataset_revision)
     print(f"Wrote {len(report['cases'])} image/matte pairs to {args.output}")
     print("Included upstream MIT notice and IJCAI 2021 citation.")
     print("Pixels remain local; original photo copyrights remain with their owners.")
