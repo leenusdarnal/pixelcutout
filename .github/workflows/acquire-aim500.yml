@@ -66,7 +66,9 @@ jobs:
           assert report["release_agreement"]["citation_required_for_research_documents"] is True
           assert (root / report["dataset_license"]["notice_file"]).is_file()
           assert (root / report["citation"]["file"]).is_file()
-          assert report["dataset_revision"] == report["acquisition"]["mirror_revision_pinned"]
+          assert report["dataset_revision"] == report["acquisition"]["dataset_revision_pinned"]
+          assert report["dataset_parquet_revision"] == report["acquisition"]["mirror_revision_pinned"]
+          assert report["dataset_parquet_revision_ref"] == "refs/convert/parquet"
           for case in cases:
               assert case.get("rights_status") == "dataset_mit_terms_applied_local_benchmark_only", case.get("case_id")
               assert case.get("dataset_license") == "MIT", case.get("case_id")
