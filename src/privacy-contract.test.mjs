@@ -23,6 +23,9 @@ test('the model loader stays inside the AI worker path', () => {
   assert.ok(worker.includes('runRemoval(message.file)'));
   assert.ok(worker.includes("else if (message?.type === 'process-manual')"));
   assert.ok(worker.includes('removeSampledColor(message.file, color, message.tolerance)'));
+  assert.ok(worker.includes("import { selectInitialDevice } from './device-selection.js'"));
+  assert.ok(worker.indexOf('await selectInitialDevice(gpu)') < worker.indexOf('return runWithWasmFallback({'),
+    'the worker must check adapter availability before attempting WebGPU');
   assert.equal(worker.split('runRemoval(message.file)').length - 1, 1,
     'only the AI message handler should invoke the model path');
 });
