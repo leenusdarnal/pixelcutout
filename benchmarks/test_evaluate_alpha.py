@@ -98,6 +98,14 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "dimensions"):
             evaluate_manifest(self.manifest_path, self.predictions_dir)
 
+    def test_rejects_rgb_prediction_without_alpha_channel(self):
+        mask = Image.new("L", (2, 2), 128)
+        self.write_manifest(mask)
+        Image.new("RGB", (2, 2), (255, 0, 0)).save(self.prediction_path)
+
+        with self.assertRaisesRegex(ValueError, "alpha PNG or an image with an alpha channel"):
+            evaluate_manifest(self.manifest_path, self.predictions_dir)
+
     def test_rejects_binary_annotations_from_alpha_scorecard(self):
         mask = Image.new("L", (2, 2), 255)
         case = self.write_manifest(mask, annotation_type="binary")
