@@ -67,3 +67,16 @@ node --input-type=module -e "import {createHash} from 'node:crypto'; import {rea
 ```
 
 The validator uses only Node.js built-ins. It does not fetch URLs or upload images.
+
+## Acquire a local AIM-500 candidate set
+
+The local acquisition tool selects 16 reproducible candidates across the seven AIM-500 categories, preferring a mix of `SO`, `STM`, and `NS` types. It downloads the dataset through Hugging Face Datasets, writes decoded RGB images as lossless PNG and alpha mattes as 8-bit grayscale PNG, and creates `benchmarks/results/aim500/aim500-candidates.json` with dimensions and SHA-256 hashes.
+
+Install the optional local-only dependencies and run:
+
+```sh
+python -m pip install -r benchmarks/requirements.txt
+python benchmarks/acquire_aim500.py
+```
+
+This is a candidate-set acquisition step, not rights clearance. The generated report explicitly keeps every item `pending`; it does not populate `manifest.json`, because the mirrored rows do not provide per-photo source/licence evidence. Verify each original photograph and the annotation terms before manually registering an approved fixture. The downloaded pixels and report remain under ignored `benchmarks/results/`; never commit them or upload them to a service.
