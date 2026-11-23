@@ -95,6 +95,8 @@ class MitComplianceTests(unittest.TestCase):
                     Path(temp) / "aim500",
                     [self.make_candidate()],
                     "a" * 40,
+                    "b" * 40,
+                    release_terms_accepted=False,
                 )
 
     def test_candidate_report_carries_mit_notice_and_required_citation(self):
@@ -105,12 +107,14 @@ class MitComplianceTests(unittest.TestCase):
                 output,
                 [self.make_candidate()],
                 revision,
+                "b" * 40,
                 release_terms_accepted=True,
             )
 
             self.assertEqual(report["schema_version"], 2)
             self.assertEqual(report["dataset_revision"], revision)
-            self.assertEqual(report["dataset_revision_ref"], DATASET_REVISION_REF)
+            self.assertEqual(report["dataset_parquet_revision"], "b" * 40)
+            self.assertEqual(report["dataset_parquet_revision_ref"], DATASET_REVISION_REF)
             self.assertEqual(report["dataset_license"]["spdx"], "MIT")
             self.assertTrue(report["dataset_license"]["notice_included"])
             self.assertFalse(report["raw_image_redistribution_approved"])
@@ -131,6 +135,7 @@ class MitComplianceTests(unittest.TestCase):
             ).read_text(encoding="utf-8")
             self.assertIn(PAPER_CITATION, citation_file)
             self.assertIn(revision, citation_file)
+            self.assertIn("b" * 40, citation_file)
             self.assertTrue(report["citation"]["required"])
 
             case = report["cases"][0]
