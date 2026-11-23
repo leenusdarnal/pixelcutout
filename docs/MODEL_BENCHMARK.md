@@ -1,6 +1,6 @@
 # PixelCutout model benchmark protocol
 
-**Status:** Benchmark protocol and metadata validator are in place; no licensed local fixture set or measured model scores have been registered yet.  
+**Status:** Benchmark protocol and metadata validator are in place; an AIM-500-first acquisition plan is documented, but no approved local fixture set or measured model scores have been registered yet. See [the 16-case acquisition checklist](BENCHMARK_FIXTURE_ACQUISITION.md).  
 **Purpose:** Select the lightest model/runtime that meets PixelCutout's broad-subject and fine-edge quality requirements.  
 **Product constraint:** All image pixels stay local. Benchmark images are test fixtures only and must never be included in the deployed site.
 
