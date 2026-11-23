@@ -190,7 +190,7 @@ def write_candidate_set(
     """Write lossless RGB PNGs, alpha PNGs, compliance notices, and metadata."""
     if not release_terms_accepted:
         raise ValueError(
-            "Read the AIM-500 release agreement and pass "
+            "Please read the AIM-500 release agreement and pass "
             "--accept-release-terms before acquiring or using these files."
         )
     for label, revision in (
