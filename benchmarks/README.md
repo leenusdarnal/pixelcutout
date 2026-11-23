@@ -40,6 +40,37 @@ The output contains lossless RGB PNGs, 8-bit grayscale alpha PNGs, a metadata re
 
 The 16 rows are category-balanced candidates, not yet manually assigned to all 16 visual challenge labels. Inspect them before claiming a sample represents hair, thin mesh, lace, backlighting, or another specific edge case. Keep raw images and model outputs under ignored local directories.
 
+## Score local alpha predictions
+
+Generate one predicted alpha PNG per case in a local directory. Name each prediction `B01.png`, `B02.png`, and so on; a manifest case can override this with `prediction_filename`.
+
+For the synthetic set, run:
+
+```sh
+python benchmarks/evaluate_alpha.py \
+  --manifest benchmarks/results/synthetic-v1/manifest.json \
+  --predictions benchmarks/results/synthetic-v1/predictions \
+  --output benchmarks/results/synthetic-v1/scores.json
+```
+
+For the acquired AIM-500 set, use its local report as the manifest and put the predicted PNGs in a separate local directory:
+
+```sh
+python benchmarks/evaluate_alpha.py \
+  --manifest benchmarks/results/aim500/aim500-candidates.json \
+  --predictions benchmarks/results/aim500/predictions \
+  --output benchmarks/results/aim500/scores.json
+```
+
+The ground-truth directory defaults to the manifest folder's `masks/` subfolder. Use `--ground-truth PATH` to override it. Predictions may be 8-bit grayscale alpha PNGs or RGBA PNGs (the alpha channel is scored). Dimensions must match exactly; the scorer never resizes predictions. It verifies a ground-truth SHA-256 when the manifest supplies one and rejects missing predictions, path traversal, and binary annotations.
+
+The JSON scorecard reports per-case and aggregate:
+- **MAE**, **SAD/1000**, and **MSE** from the original 8-bit soft-alpha values (not binarised).
+- **IoU** and **F1** after the configurable 8-bit foreground threshold (default 128).
+- **Boundary F1** with a configurable pixel tolerance (default 2 px).
+
+It records macro-average and pixel-weighted summaries. Keep each dataset's scorecard separate; synthetic scores are pipeline/regression evidence only, not real-photo quality evidence. Both the manifest, predictions, and scorecard remain local and are not uploaded by the app or CI.
+
 ## Local storage and privacy
 
 - AIM-500 candidate files: `benchmarks/results/aim500/images/` and `benchmarks/results/aim500/masks/`.
