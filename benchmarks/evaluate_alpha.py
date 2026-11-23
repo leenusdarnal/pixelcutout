@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 from pathlib import Path
 from typing import Any
 
@@ -45,14 +44,20 @@ def _local_file(root: Path, filename: str, label: str) -> Path:
     return path
 
 
-def _read_alpha(path: Path, label: str) -> Image.Image:
+def _read_alpha(path: Path, label: str, allow_luminance: bool = True) -> Image.Image:
     with Image.open(path) as source:
         if source.mode in ("RGBA", "LA"):
             alpha = source.getchannel("A")
         elif "transparency" in source.info:
             alpha = source.convert("RGBA").getchannel("A")
-        else:
+        elif source.mode in ("L", "1", "I", "I;16", "F", "P"):
             alpha = source.convert("L")
+        elif allow_luminance:
+            alpha = source.convert("L")
+        else:
+            raise ValueError(
+                f"{label} must be an 8-bit grayscale alpha PNG or an image with an alpha channel"
+            )
         result = alpha.copy()
     if result.width < 1 or result.height < 1:
         raise ValueError(f"{label} has invalid dimensions")
@@ -165,7 +170,7 @@ def score_case(
     if not isinstance(case_id, str) or not case_id or Path(case_id).name != case_id:
         raise ValueError(f"Case has an invalid id: {case_id!r}")
 
-    annotation_type = case.get("annotation_type", "alpha")
+    annotation_type = case.get("annotation_type")
     if annotation_type != "alpha":
         raise ValueError(
             f"{case_id}: annotation_type must be 'alpha'; binary masks need a separate scorecard"
@@ -190,7 +195,11 @@ def score_case(
             raise ValueError(f"{case_id}: ground-truth alpha SHA-256 does not match the manifest")
 
     ground_truth = _read_alpha(mask_path, f"{case_id} ground-truth alpha")
-    prediction = _read_alpha(prediction_path, f"{case_id} prediction")
+    prediction = _read_alpha(
+        prediction_path,
+        f"{case_id} prediction",
+        allow_luminance=False,
+    )
     if prediction.size != ground_truth.size:
         raise ValueError(
             f"{case_id}: prediction dimensions {prediction.size} do not match "
@@ -314,7 +323,11 @@ def evaluate_manifest(
     if not isinstance(cases, list) or not cases:
         raise ValueError("Manifest must contain a non-empty 'cases' array")
 
+    if not all(isinstance(case, dict) for case in cases):
+        raise ValueError("Each manifest case must be an object")
     identifiers = [case.get("id", case.get("case_id")) for case in cases]
+    if not all(isinstance(identifier, str) and identifier for identifier in identifiers):
+        raise ValueError("Every manifest case must have a non-empty string id or case_id")
     if len(set(identifiers)) != len(identifiers):
         raise ValueError("Manifest contains duplicate case IDs")
 
