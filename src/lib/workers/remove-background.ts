@@ -1,6 +1,7 @@
 import { removeColorPixels } from '../image/remove-color.js';
 import { encodeRgbaPng } from '../image/png-output.js';
 import { runWithWasmFallback } from './runtime-fallback.js';
+import { selectInitialDevice } from './device-selection.js';
 
 type TransformersModule = typeof import('@huggingface/transformers');
 
@@ -80,6 +81,23 @@ async function loadRemover(device: 'webgpu' | 'wasm') {
 async function runRemoval(file: Blob) {
   // Once WASM is selected, keep using that session for later images.
   if (remover && removerDevice === 'wasm') {
+    return remover(file);
+  }
+
+  // Transformers.js 4.3.2 can poison its shared ONNX session chain if a
+  // WebGPU session is attempted when navigator.gpu exists but requestAdapter()
+  // returns null. Preflight the adapter and go straight to WASM in that case.
+  // This keeps the universal CPU path available without first triggering a
+  // failed WebGPU session in the same worker.
+  const gpu = (self.navigator as unknown as {
+    gpu?: { requestAdapter?: () => Promise<unknown> };
+  }).gpu;
+  const initialDevice = await selectInitialDevice(gpu);
+
+  if (initialDevice === 'wasm') {
+    if (!remover || removerDevice !== 'wasm') {
+      await loadRemover('wasm');
+    }
     return remover(file);
   }
 
