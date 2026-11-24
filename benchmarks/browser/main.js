@@ -11,6 +11,29 @@ const progressPercent = document.querySelector('#progress-percent');
 const runState = document.querySelector('#run-state');
 const resultsRoot = document.querySelector('#results');
 const downloadsRoot = document.querySelector('#downloads');
+const fixtureReviewSection = document.querySelector('#fixture-review-section');
+const fixtureReviewGrid = document.querySelector('#fixture-review-grid');
+const reviewCount = document.querySelector('#review-count');
+const reviewDownloadButton = document.querySelector('#download-label-review');
+
+const CHALLENGE_LABELS = [
+  ['B01', 'Person · straight hair'],
+  ['B02', 'Person · curly hair / flyaways'],
+  ['B03', 'Person · clothing gaps'],
+  ['B04', 'Animal · long fur'],
+  ['B05', 'Animal · dark-on-dark'],
+  ['B06', 'Animal · pale fur'],
+  ['B07', 'Product · cast shadow'],
+  ['B08', 'Object · low contrast'],
+  ['B09', 'Glass · transparent / reflective'],
+  ['B10', 'Object · thin parts / openings'],
+  ['B11', 'Plant · fine leaves / stems'],
+  ['B12', 'Structure · mesh / spokes'],
+  ['B13', 'Material · lace / open weave'],
+  ['B14', 'Natural detail · feather / branches'],
+  ['B15', 'Difficult · similar background'],
+  ['B16', 'Occlusion · clutter / overlap']
+];
 
 let fixtureSet = null;
 let outputDirectory = null;
@@ -18,6 +41,7 @@ let running = false;
 let completedCases = 0;
 let totalCases = 0;
 const fallbackDownloads = [];
+const fixturePreviewUrls = [];
 
 function setStatus(element, message, tone = '') {
   element.textContent = message;
@@ -42,6 +66,135 @@ function setRunState(state, label) {
 
 function safeCaseId(value) {
   return typeof value === 'string' && /^B\d{2}$/.test(value);
+}
+
+function clearFixtureReview() {
+  for (const url of fixturePreviewUrls.splice(0)) URL.revokeObjectURL(url);
+  fixtureReviewGrid.replaceChildren();
+  fixtureReviewSection.hidden = true;
+  reviewDownloadButton.disabled = true;
+  reviewCount.textContent = '0 / 16 mapped';
+  delete reviewCount.dataset.tone;
+}
+
+function refreshReviewSummary(cases) {
+  const assigned = cases.filter((item) => item.reviewChallenge && item.reviewChallenge !== 'none');
+  const challengeCounts = new Map();
+  for (const item of assigned) {
+    challengeCounts.set(item.reviewChallenge, (challengeCounts.get(item.reviewChallenge) || 0) + 1);
+  }
+  const duplicates = Array.from(challengeCounts.values()).filter((count) => count > 1).length;
+  reviewCount.textContent = `${assigned.length} / ${cases.length} mapped${duplicates ? ` · ${duplicates} duplicate labels` : ''}`;
+  if (assigned.length === cases.length && duplicates === 0) reviewCount.dataset.tone = 'success';
+  else delete reviewCount.dataset.tone;
+}
+
+function buildLabelReview() {
+  if (!fixtureSet) return null;
+  const labels = new Map(CHALLENGE_LABELS);
+  return {
+    schemaVersion: 1,
+    dataset: fixtureSet.manifest.dataset || 'AIM-500',
+    datasetMainRevision: fixtureSet.manifest.dataset_revision || null,
+    datasetParquetRevision: fixtureSet.manifest.dataset_parquet_revision || null,
+    createdAt: new Date().toISOString(),
+    cases: fixtureSet.cases.map((item) => ({
+      caseId: item.id,
+      filename: item.filename,
+      category: item.category,
+      width: item.width,
+      height: item.height,
+      imageSha256: item.imageSha256,
+      annotationFilename: item.annotationFilename,
+      annotationSha256: item.annotationSha256,
+      challengeId: item.reviewChallenge && item.reviewChallenge !== 'none' ? item.reviewChallenge : null,
+      challengeLabel: labels.get(item.reviewChallenge) || null,
+      reviewStatus: item.reviewChallenge === 'none'
+        ? 'no_direct_match'
+        : item.reviewChallenge
+          ? 'mapped'
+          : 'unreviewed'
+    }))
+  };
+}
+
+function appendReviewImage(parent, file, caption, alt) {
+  const figure = document.createElement('figure');
+  const image = document.createElement('img');
+  const url = URL.createObjectURL(file);
+  fixturePreviewUrls.push(url);
+  image.src = url;
+  image.alt = alt;
+  image.loading = 'lazy';
+  image.decoding = 'async';
+  const label = document.createElement('figcaption');
+  label.textContent = caption;
+  figure.append(image, label);
+  parent.append(figure);
+}
+
+function renderFixtureReview(cases) {
+  clearFixtureReview();
+  const fragment = document.createDocumentFragment();
+
+  for (const item of cases) {
+    const card = document.createElement('article');
+    card.className = 'review-card';
+
+    const heading = document.createElement('div');
+    heading.className = 'review-card-heading';
+    const caseId = document.createElement('strong');
+    caseId.textContent = item.id;
+    const category = document.createElement('span');
+    category.textContent = item.category;
+    category.title = item.category;
+    heading.append(caseId, category);
+
+    const images = document.createElement('div');
+    images.className = 'review-images';
+    appendReviewImage(images, item.image, 'Source photo', `${item.id} source photo`);
+    appendReviewImage(images, item.mask, 'Ground-truth matte', `${item.id} ground-truth alpha matte`);
+
+    const filename = document.createElement('span');
+    filename.className = 'review-filename';
+    filename.textContent = `${item.width} × ${item.height} · ${item.filename}`;
+    filename.title = item.filename;
+
+    const label = document.createElement('label');
+    label.className = 'review-label';
+    label.textContent = 'Best matching challenge';
+    const select = document.createElement('select');
+    select.setAttribute('aria-label', `${item.id} best matching challenge`);
+
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = 'Choose after review';
+    select.append(emptyOption);
+    for (const [id, description] of CHALLENGE_LABELS) {
+      const option = document.createElement('option');
+      option.value = id;
+      option.textContent = `${id} · ${description}`;
+      select.append(option);
+    }
+    const noMatchOption = document.createElement('option');
+    noMatchOption.value = 'none';
+    noMatchOption.textContent = 'No direct match';
+    select.append(noMatchOption);
+    select.value = item.reviewChallenge || '';
+    select.addEventListener('change', () => {
+      item.reviewChallenge = select.value || null;
+      refreshReviewSummary(cases);
+    });
+    label.append(select);
+
+    card.append(heading, images, filename, label);
+    fragment.append(card);
+  }
+
+  fixtureReviewGrid.replaceChildren(fragment);
+  fixtureReviewSection.hidden = false;
+  reviewDownloadButton.disabled = false;
+  refreshReviewSummary(cases);
 }
 
 async function readFixtureFolder(fileList) {
@@ -87,7 +240,8 @@ async function readFixtureFolder(fileList) {
       imageSha256: entry.image_sha256 || null,
       annotationSha256: entry.annotation_sha256 || null,
       width: entry.width,
-      height: entry.height
+      height: entry.height,
+      reviewChallenge: null
     };
   });
 
@@ -97,6 +251,7 @@ async function readFixtureFolder(fileList) {
 async function handleFixtureSelection(fileList) {
   if (running) return;
   fixtureSet = null;
+  clearFixtureReview();
   runButton.disabled = true;
   if (!fileList?.length) {
     setStatus(fixtureStatus, 'No fixture files selected.');
@@ -106,6 +261,7 @@ async function handleFixtureSelection(fileList) {
   setStatus(fixtureStatus, 'Checking the manifest and all local image/matte pairs…');
   try {
     fixtureSet = await readFixtureFolder(fileList);
+    renderFixtureReview(fixtureSet.cases);
     setStatus(
       fixtureStatus,
       `Ready: ${fixtureSet.cases.length} image/matte pairs · ${fixtureSet.manifest.dataset || 'AIM-500'} · images remain local.`,
@@ -115,6 +271,7 @@ async function handleFixtureSelection(fileList) {
     updateProgress('Fixture set is ready. Choose the models and backend, then start the run.', 0, 0);
   } catch (error) {
     fixtureSet = null;
+    clearFixtureReview();
     setStatus(fixtureStatus, error instanceof Error ? error.message : 'Could not read the fixture files.', 'error');
   }
 }
@@ -205,6 +362,23 @@ async function persistFile(modelFolder, subfolder, filename, blob) {
     offerDownload(`${modelFolder}-${filename}`, blob);
   }
 }
+
+reviewDownloadButton.addEventListener('click', async () => {
+  const review = buildLabelReview();
+  if (!review) return;
+  const blob = new Blob([JSON.stringify(review, null, 2)], { type: 'application/json' });
+  try {
+    if (outputDirectory) {
+      await writeLocalFile(outputDirectory, ['aim500-label-review.json'], blob);
+      setStatus(outputStatus, 'Label review JSON saved to the selected local output folder.', 'success');
+    } else {
+      offerDownload('aim500-label-review.json', blob);
+      setStatus(outputStatus, 'Label review JSON is ready to download below.', 'success');
+    }
+  } catch (error) {
+    setStatus(outputStatus, error instanceof Error ? error.message : 'Could not save the label review JSON.', 'error');
+  }
+});
 
 function buildResultCard(result) {
   const card = document.createElement('article');
@@ -383,6 +557,7 @@ async function runOneModel(candidate, device, cases, onCaseProgress) {
       fixtureMainRevision: fixtureSet.manifest.dataset_revision || null,
       fixtureParquetRevision: fixtureSet.manifest.dataset_parquet_revision || null,
       fixtureCount: cases.length,
+      labelReview: buildLabelReview(),
       runs
     };
 
@@ -455,15 +630,19 @@ runButton.addEventListener('click', async () => {
       fixtureDataset: fixtureSet.manifest.dataset || 'AIM-500',
       device,
       imagePixelsUploaded: false,
+      labelReview: buildLabelReview(),
       models: results
     };
     const summaryBlob = new Blob([JSON.stringify(summary, null, 2)], { type: 'application/json' });
+    const labelReviewBlob = new Blob([JSON.stringify(buildLabelReview(), null, 2)], { type: 'application/json' });
     if (outputDirectory) {
       await writeLocalFile(outputDirectory, ['benchmark-summary.json'], summaryBlob);
-      updateProgress('Complete. Predictions and benchmark JSON were saved to the selected folder.', totalCases, totalCases);
+      await writeLocalFile(outputDirectory, ['aim500-label-review.json'], labelReviewBlob);
+      updateProgress('Complete. Predictions, timings and case-label review were saved to the selected folder.', totalCases, totalCases);
     } else {
       offerDownload('pixelcutout-benchmark-summary.json', summaryBlob);
-      updateProgress('Complete. Download each prediction PNG and the benchmark summary below.', totalCases, totalCases);
+      offerDownload('aim500-label-review.json', labelReviewBlob);
+      updateProgress('Complete. Download the prediction PNGs, benchmark summary and label review below.', totalCases, totalCases);
     }
     setRunState('done', 'Complete');
   } catch (error) {
@@ -478,7 +657,12 @@ runButton.addEventListener('click', async () => {
   }
 });
 
+window.addEventListener('beforeunload', () => {
+  for (const url of fixturePreviewUrls.splice(0)) URL.revokeObjectURL(url);
+  for (const url of fallbackDownloads.splice(0)) URL.revokeObjectURL(url);
+});
+
 if (!('showDirectoryPicker' in window)) {
   outputButton.textContent = 'Folder saving unsupported';
-  outputButton.title = 'Prediction PNGs will be offered as individual downloads.';
+  outputButton.title = 'Prediction PNGs and review JSON will be offered as individual downloads.';
 }
