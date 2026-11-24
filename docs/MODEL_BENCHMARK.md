@@ -4,6 +4,12 @@
 **Purpose:** Select the lightest model/runtime that meets PixelCutout's broad-subject and fine-edge quality requirements.  
 **Product constraint:** All image pixels stay local. Benchmark images are test fixtures only and must never be included in the deployed site.
 
+## 0. Local browser runner
+
+Use the isolated harness in [`benchmarks/browser/README.md`](../benchmarks/browser/README.md) to produce matched-input predictions and performance metadata. Start it with `npm run benchmark:browser:dev`, select the local `benchmarks/results/aim500/` folder, choose WebGPU or WASM, and run the selected models. It runs models sequentially in separate workers, warms each one, and writes full-source-dimension alpha-channel PNGs and per-run JSON into a local folder selected by the user. The separate harness build is verified in CI and is not part of the SvelteKit production route or bundle.
+
+The scorecard records browser/device hints, model-load time, warm-up time, preprocessing time, inference time, postprocessing time, and progress-callback asset byte totals. The latter may include cached assets and is **not** a measured network transfer; peak GPU/WASM memory is not consistently exposed by browser APIs. Use the browser Network panel and real-device profiling to fill those gaps. The harness records observed Hub commit SHAs as provenance hints but does not pin model revisions at runtime; see `MODEL_PROVENANCE.md`. Do not claim benchmark completion until both models have run on identical cases on desktop and a mid-range Android device, predictions have been scored locally, and the photos have been visually reviewed against their labels.
+
 ## 1. Benchmark set
 
 ### Project-owned synthetic smoke suite
