@@ -103,7 +103,7 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
         self.write_manifest(mask)
         Image.new("RGB", (2, 2), (255, 0, 0)).save(self.prediction_path)
 
-        with self.assertRaisesRegex(ValueError, "alpha PNG or an image with an alpha channel"):
+        with self.assertRaisesRegex(ValueError, "8-bit grayscale PNG or a PNG with an alpha channel"):
             evaluate_manifest(self.manifest_path, self.predictions_dir)
 
     def test_rejects_binary_annotations_from_alpha_scorecard(self):
@@ -127,6 +127,7 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
         mask = Image.new("RGB", (2, 2), (255, 255, 255))
         mask_path = self.mask_dir / "rgb-mask.png"
         mask.save(mask_path, format="PNG")
+        Image.new("L", (2, 2), 128).save(self.prediction_path, format="PNG")
         case = {
             "id": "B01",
             "annotation_filename": mask_path.name,
