@@ -11,3 +11,6 @@ benchmarks/images/
 benchmarks/masks/
 benchmarks/results/
 build/
+
+# Standalone benchmark harness build output (not part of the production app)
+benchmarks/browser/dist/
