@@ -146,7 +146,8 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
             score_case(case, self.mask_dir, self.predictions_dir)
 
     def test_rejects_prediction_missing_from_local_folder(self):
-        mask = Image.new("L", (2, 2), 255)
+        mask = Image.new("L", (2, 2), 0)
+        mask.putpixel((0, 0), 128)
         self.write_manifest(mask)
 
         with self.assertRaisesRegex(FileNotFoundError, "predicted alpha"):
