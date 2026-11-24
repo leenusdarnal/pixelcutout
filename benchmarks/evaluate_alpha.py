@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -164,6 +165,7 @@ def score_case(
     predictions_dir: Path,
     threshold: int = 128,
     boundary_tolerance: int = 2,
+    images_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Score one alpha prediction; masks are never resized or binarised for MAE/MSE/SAD."""
     case_id = case.get("id", case.get("case_id"))
@@ -188,13 +190,34 @@ def score_case(
         f"{case_id} predicted alpha",
     )
 
+    actual_annotation_hash = _sha256(mask_path)
     expected_hash = case.get("annotation_sha256")
-    if expected_hash:
-        actual_hash = _sha256(mask_path)
-        if actual_hash.lower() != str(expected_hash).lower():
-            raise ValueError(f"{case_id}: ground-truth alpha SHA-256 does not match the manifest")
+    if expected_hash and actual_annotation_hash.lower() != str(expected_hash).lower():
+        raise ValueError(f"{case_id}: ground-truth alpha SHA-256 does not match the manifest")
 
     ground_truth = _read_alpha(mask_path, f"{case_id} ground-truth alpha")
+    actual_image_hash = None
+    image_name = case.get("filename")
+    declared_image_hash = case.get("image_sha256")
+    if images_dir is not None:
+        image_name = _safe_filename(image_name, f"{case_id} filename")
+        if not isinstance(declared_image_hash, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", declared_image_hash):
+            raise ValueError(f"{case_id}: image_sha256 must be a 64-character SHA-256 digest")
+        image_path = _local_file(images_dir, image_name, f"{case_id} source image")
+        actual_image_hash = _sha256(image_path)
+        if actual_image_hash.lower() != declared_image_hash.lower():
+            raise ValueError(f"{case_id}: source image SHA-256 does not match the manifest")
+        with Image.open(image_path) as source_image:
+            if source_image.format != "PNG":
+                raise ValueError(f"{case_id}: source image must be a PNG file")
+            if source_image.size != ground_truth.size:
+                raise ValueError(
+                    f"{case_id}: source image dimensions {source_image.size} do not match "
+                    f"ground truth {ground_truth.size}"
+                )
+    elif isinstance(declared_image_hash, str):
+        actual_image_hash = declared_image_hash.lower()
+
     intermediate_alpha_pixels = sum(ground_truth.histogram()[1:255])
     if intermediate_alpha_pixels == 0:
         raise ValueError(
@@ -230,6 +253,12 @@ def score_case(
         "width": ground_truth.width,
         "height": ground_truth.height,
         "pixels": pixel_count,
+        "input_identity": {
+            "image_filename": image_name,
+            "image_sha256": actual_image_hash,
+            "annotation_filename": mask_name,
+            "annotation_sha256": actual_annotation_hash.lower(),
+        },
         "metrics": {
             "mae": mae,
             "sad_x1000": absolute_error / 1000,
@@ -309,6 +338,7 @@ def evaluate_manifest(
     ground_truth_dir: Path | None = None,
     threshold: int = 128,
     boundary_tolerance: int = 2,
+    images_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Evaluate every case in a synthetic or AIM-500 local manifest."""
     if not 0 <= threshold <= 255:
@@ -319,6 +349,7 @@ def evaluate_manifest(
     manifest_path = manifest_path.resolve()
     predictions_dir = predictions_dir.resolve()
     ground_truth_dir = (ground_truth_dir or manifest_path.parent / "masks").resolve()
+    images_dir = (images_dir or manifest_path.parent / "images").resolve()
 
     with manifest_path.open("r", encoding="utf-8") as handle:
         manifest = json.load(handle)
@@ -335,7 +366,14 @@ def evaluate_manifest(
         raise ValueError("Manifest contains duplicate case IDs")
 
     scores = [
-        score_case(case, ground_truth_dir, predictions_dir, threshold, boundary_tolerance)
+        score_case(
+            case,
+            ground_truth_dir,
+            predictions_dir,
+            threshold,
+            boundary_tolerance,
+            images_dir,
+        )
         for case in cases
     ]
     result = {
@@ -344,6 +382,7 @@ def evaluate_manifest(
         "manifest": str(manifest_path),
         "prediction_directory": str(predictions_dir),
         "ground_truth_directory": str(ground_truth_dir),
+        "source_image_directory": str(images_dir),
         "annotation_type": "alpha",
         "configuration": {
             "foreground_threshold_8bit": threshold,
@@ -371,6 +410,7 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, required=True, help="Local fixture manifest.json")
     parser.add_argument("--predictions", type=Path, required=True, help="Directory containing <case-id>.png alpha predictions")
     parser.add_argument("--ground-truth", type=Path, help="Ground-truth mask directory (default: manifest directory/masks)")
+    parser.add_argument("--images", type=Path, help="Source image directory (default: manifest directory/images)")
     parser.add_argument("--output", type=Path, help="Optional JSON scorecard output path")
     parser.add_argument("--threshold", type=int, default=128, help="8-bit foreground threshold (default: 128)")
     parser.add_argument("--boundary-tolerance", type=int, default=2, help="Boundary matching tolerance in pixels (default: 2)")
@@ -384,6 +424,7 @@ def main() -> int:
             ground_truth_dir=args.ground_truth,
             threshold=args.threshold,
             boundary_tolerance=args.boundary_tolerance,
+            images_dir=args.images,
         )
     except (OSError, ValueError, json.JSONDecodeError) as error:
         parser.error(str(error))
