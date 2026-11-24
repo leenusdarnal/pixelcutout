@@ -237,6 +237,7 @@ async function readFixtureFolder(fileList) {
       filename: entry.filename,
       annotationFilename: entry.annotation_filename,
       image,
+      mask,
       imageSha256: entry.image_sha256 || null,
       annotationSha256: entry.annotation_sha256 || null,
       width: entry.width,
