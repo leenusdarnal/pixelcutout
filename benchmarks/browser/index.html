@@ -65,6 +65,23 @@
           No fixture files selected.
         </div>
 
+        <section id="fixture-review-section" class="review-section" aria-labelledby="fixture-review-heading" hidden>
+          <div class="review-heading">
+            <div>
+              <p class="eyebrow">Local visual review</p>
+              <h3 id="fixture-review-heading">Check the selected photos and mattes</h3>
+              <p class="hint">Confirm which documented edge challenge each photo actually represents. Previews and label choices stay in this browser.</p>
+            </div>
+            <div class="review-actions">
+              <span id="review-count" class="review-count" role="status" aria-live="polite">0 / 16 mapped</span>
+              <button id="download-label-review" class="button button-secondary" type="button" disabled>
+                Download label map
+              </button>
+            </div>
+          </div>
+          <div id="fixture-review-grid" class="review-grid"></div>
+        </section>
+
         <div class="field-grid">
           <fieldset class="choice-group">
             <legend>Execution backend</legend>
