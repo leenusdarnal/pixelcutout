@@ -28,7 +28,9 @@ Choose the local directory created by the terms-gated AIM-500 acquisition:
 
 `benchmarks/results/aim500/`
 
-When the browser cannot select a directory, use the **Or select the fixture files individually** picker and select `aim500-candidates.json` plus all 32 PNG files from its `images/` and `masks/` folders in one multi-file selection. The harness matches unique file names from the manifest and rejects duplicate names or missing pairs.
+When the browser cannot select a directory, use the **Or select the fixture files individually** picker and select `aim500-candidates.json` plus all 32 PNG files from its `images/` and `masks/` folders in one multi-file selection. The harness matches unique file names from the manifest and rejects duplicate names or missing pairs. Once the files pass validation, a local contact sheet shows each source image next to its ground-truth alpha matte. Use the per-case selector to map it to the closest B01–B16 edge-challenge label from `docs/MODEL_BENCHMARK.md`, or choose **No direct match**. Repeated challenge labels are flagged so they can be reviewed. This is a human label check, not a model-quality score.
+
+The **Download label map** action exports `aim500-label-review.json`; the same map is included in benchmark metadata and the final summary. It records case IDs, categories, dimensions, source/matte hashes, selected challenge labels and review status. It contains no image pixels. Preview URLs are local `blob:` URLs and are revoked when the fixture selection is replaced or the page closes.
 
 It must contain:
 
