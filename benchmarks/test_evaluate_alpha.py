@@ -114,6 +114,28 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be 'alpha'"):
             score_case(case, self.mask_dir, self.predictions_dir)
 
+    def test_rejects_binary_pixels_even_when_manifest_says_alpha(self):
+        mask = Image.new("L", (4, 4), 0)
+        mask.putpixel((1, 1), 255)
+        self.write_manifest(mask)
+        mask.save(self.prediction_path)
+
+        with self.assertRaisesRegex(ValueError, "ground-truth annotation is binary"):
+            evaluate_manifest(self.manifest_path, self.predictions_dir)
+
+    def test_rejects_rgb_ground_truth_instead_of_converting_it_to_luminance(self):
+        mask = Image.new("RGB", (2, 2), (255, 255, 255))
+        mask_path = self.mask_dir / "rgb-mask.png"
+        mask.save(mask_path, format="PNG")
+        case = {
+            "id": "B01",
+            "annotation_filename": mask_path.name,
+            "annotation_type": "alpha",
+        }
+
+        with self.assertRaisesRegex(ValueError, "8-bit grayscale PNG"):
+            score_case(case, self.mask_dir, self.predictions_dir)
+
     def test_rejects_prediction_missing_from_local_folder(self):
         mask = Image.new("L", (2, 2), 255)
         self.write_manifest(mask)
