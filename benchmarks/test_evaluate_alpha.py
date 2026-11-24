@@ -63,9 +63,11 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
     def test_soft_alpha_error_is_not_binarised_for_mae_or_mse(self):
         mask = Image.new("L", (2, 2), 0)
         mask.putpixel((0, 0), 255)
+        mask.putpixel((1, 1), 64)
         self.write_manifest(mask)
         prediction = Image.new("L", (2, 2), 0)
         prediction.putpixel((0, 0), 127)
+        prediction.putpixel((1, 1), 64)
         prediction.save(self.prediction_path, format="PNG")
 
         result = evaluate_manifest(self.manifest_path, self.predictions_dir)
@@ -92,6 +94,7 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
 
     def test_rejects_dimension_mismatch_without_resizing(self):
         mask = Image.new("L", (2, 2), 255)
+        mask.putpixel((0, 0), 128)
         self.write_manifest(mask)
         Image.new("L", (3, 2), 255).save(self.prediction_path)
 
