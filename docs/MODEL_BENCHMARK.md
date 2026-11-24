@@ -1,6 +1,6 @@
 # PixelCutout model benchmark protocol
 
-**Status:** Benchmark protocol and metadata validator are in place. AIM-500 is the primary local real-photo evaluation source under its official MIT release terms; the acquisition tool preserves the upstream MIT notice and required citation, records both immutable snapshot SHAs, and requires explicit agreement acknowledgement. The new terms-gated acquisition has not yet been run; the synthetic 16-case suite remains a separate smoke/regression set. Model scores and device measurements are still pending. See [the AIM-500 acquisition checklist](BENCHMARK_FIXTURE_ACQUISITION.md) and [the synthetic benchmark guide](SYNTHETIC_BENCHMARK.md).  
+**Status:** Benchmark protocol and metadata validator are in place. AIM-500 is the primary local real-photo evaluation source under its official MIT release terms; the acquisition tool preserves the upstream MIT notice and required citation, records both immutable snapshot SHAs, and requires explicit agreement acknowledgement. The terms-gated acquisition was run on 2026-11-23 and produced a local 16-pair subset with the upstream MIT notice, IJCAI 2021 citation, and pinned source snapshots; photo-level visual review and model scoring remain pending. The synthetic 16-case suite remains a separate smoke/regression set. Model scores and device measurements are still pending. See [the AIM-500 acquisition checklist](BENCHMARK_FIXTURE_ACQUISITION.md) and [the synthetic benchmark guide](SYNTHETIC_BENCHMARK.md).  
 **Purpose:** Select the lightest model/runtime that meets PixelCutout's broad-subject and fine-edge quality requirements.  
 **Product constraint:** All image pixels stay local. Benchmark images are test fixtures only and must never be included in the deployed site.
 
@@ -54,7 +54,7 @@ Score each result visually from 1 (unusable) to 5 (excellent) in these dimension
 | Halo / edge cleanliness | 10% | No obvious bright/dark fringe, jagged edge, or colour contamination |
 | Consistency / artifacts | 10% | No unexpected blobs, blur, or unstable output across the image |
 
-For images with reliable ground-truth masks, also record mask IoU/F1 and boundary F-score at a fixed pixel tolerance. These metrics supplement, but do not replace, visual review of alpha edges and translucent material. Do not invent ground truth for images that do not have it.
+For images with reliable ground-truth alpha mattes, run `python benchmarks/evaluate_alpha.py --manifest PATH --predictions DIR --output SCORECARD.json`. The scorer reports MAE, SAD/1000, and MSE from the unthresholded 8-bit alpha values, plus IoU/F1 at a recorded threshold and boundary F1 at a recorded pixel tolerance. It requires exact dimensions, checks the manifest matte hash when available, and refuses binary annotations in the alpha scorecard. Use the per-case results for triage and both macro-average and pixel-weighted summaries for comparison. These metrics supplement, but do not replace, visual review of alpha edges and translucent material. Do not invent ground truth for images that do not have it.
 
 A model candidate should not be selected solely because it is small or fast. Flag any critical failure where an important part of the subject disappears, the background remains as a large connected region, or the mask damages important fine structures.
 
@@ -91,6 +91,8 @@ Use the same device, browser version, test image, cache state, and input dimensi
 
 
 ## 7. Candidate research notes (2026-11-22)
+
+**Task-type caveat:** The BiRefNet Lite repository is published with the `image-segmentation` task tag. Its sigmoid-transformed logits form a continuous foreground score map, but that does not by itself establish calibrated soft-alpha matting quality. Compare it against the true soft-alpha annotations only as an empirical candidate, and retain full-resolution visual review of hair, fur, translucent objects, and fine structures. No quality advantage is assumed before matched-input results exist.
 
 The following candidate is a research lead, not a tested result:
 

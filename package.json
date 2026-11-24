@@ -10,7 +10,8 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "node --test",
     "benchmark:validate": "node benchmarks/validate-manifest.mjs",
-    "benchmark:generate:synthetic": "python benchmarks/generate_synthetic.py"
+    "benchmark:generate:synthetic": "python benchmarks/generate_synthetic.py",
+    "benchmark:score:alpha": "python benchmarks/evaluate_alpha.py"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.2",
