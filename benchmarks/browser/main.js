@@ -59,12 +59,12 @@ async function readFixtureFolder(fileList) {
     throw new Error('The AIM-500 report must contain exactly 16 candidate cases.');
   }
 
-  const imageFiles = new Map();
-  const maskFiles = new Map();
+  const filesByName = new Map();
   for (const file of files) {
-    const path = getRelativePath(file).replaceAll('\\', '/');
-    if (path.includes('/images/')) imageFiles.set(file.name, file);
-    if (path.includes('/masks/')) maskFiles.set(file.name, file);
+    if (filesByName.has(file.name)) {
+      throw new Error(`Duplicate filename selected: ${file.name}. Select one complete fixture folder.`);
+    }
+    filesByName.set(file.name, file);
   }
 
   const cases = manifest.cases.map((entry) => {
@@ -73,8 +73,8 @@ async function readFixtureFolder(fileList) {
     if (entry.annotation_type !== 'alpha') {
       throw new Error(`${id} is not labelled as a soft-alpha case.`);
     }
-    const image = imageFiles.get(entry.filename);
-    const mask = maskFiles.get(entry.annotation_filename);
+    const image = filesByName.get(entry.filename);
+    const mask = filesByName.get(entry.annotation_filename);
     if (!image || !mask) {
       throw new Error(`${id}: missing image or alpha matte. Choose the complete AIM-500 output folder.`);
     }

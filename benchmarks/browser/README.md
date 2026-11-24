@@ -13,11 +13,22 @@ npm run benchmark:browser:dev
 
 Open the local URL printed by Vite (normally `http://localhost:4174`). Use a recent Chromium browser for WebGPU and the local output-folder picker. WASM is available as a CPU comparison where the browser supports the required Transformers.js operations.
 
+## Hosted preview
+
+The same harness is available from the Vercel Benchmarks project at
+[benchmarks-git-main-leenusdarnals-projects.vercel.app](https://benchmarks-git-main-leenusdarnals-projects.vercel.app/).
+The deployment is protected by the owning Vercel team's SSO. Sign in with the
+team account before opening it. The hosted page still reads the fixture folder
+from the device you select; it does not store or upload the photos, mattes, or
+predictions.
+
 ## Fixture folder
 
 Choose the local directory created by the terms-gated AIM-500 acquisition:
 
 `benchmarks/results/aim500/`
+
+When the browser cannot select a directory, select `aim500-candidates.json` and all 32 PNG files from its `images/` and `masks/` folders in one multi-file selection. The harness matches unique file names from the manifest.
 
 It must contain:
 
