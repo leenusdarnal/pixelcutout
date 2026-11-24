@@ -12,6 +12,7 @@
     "benchmark:validate": "node benchmarks/validate-manifest.mjs",
     "benchmark:generate:synthetic": "python benchmarks/generate_synthetic.py",
     "benchmark:score:alpha": "python benchmarks/evaluate_alpha.py",
+    "benchmark:compare:alpha": "python benchmarks/compare_alpha_scorecards.py",
     "benchmark:browser:dev": "vite --config benchmarks/browser/vite.config.ts --host 0.0.0.0",
     "benchmark:browser:build": "vite build --config benchmarks/browser/vite.config.ts"
   },

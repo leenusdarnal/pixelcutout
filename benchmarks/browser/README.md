@@ -62,7 +62,18 @@ python benchmarks/evaluate_alpha.py \
   --output /path/to/output/MODNet-webgpu/scorecard.json
 ```
 
-Repeat with the BiRefNet Lite prediction directory. Keep the scorecards separate by model and backend. The scorer requires actual intermediate alpha values in the ground truth and checks the ground-truth hashes and dimensions. Do not combine synthetic-suite results with AIM-500 natural-photo results.
+Repeat with the BiRefNet Lite prediction directory. Keep the scorecards separate by model and backend. The scorer requires actual intermediate alpha values in the ground truth and checks the ground-truth hashes and dimensions. Do not combine synthetic-suite results with AIM-500 natural-photo results. It also verifies every source-image SHA-256 against the local `images/` fixture folder and records both verified input hashes in each case result.
+
+Compare scorecards only after all candidates have been scored against the same fixture set and thresholds:
+
+```sh
+npm run benchmark:compare:alpha -- \
+  --candidate MODNet-WASM=/path/to/output/MODNet-WASM/scorecard.json \
+  --candidate BiRefNet-WASM=/path/to/output/BiRefNet-WASM/scorecard.json \
+  --output /path/to/output/matched-comparison.json
+```
+
+The comparator rejects differences in case IDs, source-image hashes, ground-truth alpha hashes, filenames, dimensions, or metric thresholds. Its report includes per-case metrics and macro/pixel-weighted winners. It compares only the supplied local JSON files; no image pixels or scorecards are uploaded. Do not combine synthetic-suite results with AIM-500 natural-photo results.
 
 ## Build check
 

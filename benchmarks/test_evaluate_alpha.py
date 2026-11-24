@@ -17,6 +17,8 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
         self.predictions_dir = self.root / "predictions"
         self.mask_dir.mkdir()
         self.predictions_dir.mkdir()
+        self.images_dir = self.root / "images"
+        self.images_dir.mkdir()
         self.mask_path = self.mask_dir / "b01-alpha.png"
         self.prediction_path = self.predictions_dir / "B01.png"
         self.manifest_path = self.root / "manifest.json"
@@ -26,9 +28,12 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
 
     def write_manifest(self, mask, **case_overrides):
         mask.save(self.mask_path, format="PNG")
+        image_path = self.images_dir / "b01.png"
+        Image.new("RGB", mask.size, (40, 80, 120)).save(image_path, format="PNG")
         case = {
             "id": "B01",
-            "filename": "b01.png",
+            "filename": image_path.name,
+            "image_sha256": hashlib.sha256(image_path.read_bytes()).hexdigest(),
             "annotation_filename": self.mask_path.name,
             "annotation_type": "alpha",
             "annotation_sha256": hashlib.sha256(self.mask_path.read_bytes()).hexdigest(),
@@ -141,7 +146,8 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
             score_case(case, self.mask_dir, self.predictions_dir)
 
     def test_rejects_prediction_missing_from_local_folder(self):
-        mask = Image.new("L", (2, 2), 255)
+        mask = Image.new("L", (2, 2), 0)
+        mask.putpixel((0, 0), 128)
         self.write_manifest(mask)
 
         with self.assertRaisesRegex(FileNotFoundError, "predicted alpha"):
@@ -163,6 +169,28 @@ class AlphaBenchmarkScorerTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "SHA-256"):
             evaluate_manifest(self.manifest_path, self.predictions_dir)
+
+    def test_rejects_source_image_hash_mismatch(self):
+        mask = Image.new("L", (2, 2), 128)
+        self.write_manifest(mask)
+        Image.new("RGB", (2, 2), (1, 2, 3)).save(self.images_dir / "b01.png")
+        mask.save(self.prediction_path)
+
+        with self.assertRaisesRegex(ValueError, "source image SHA-256"):
+            evaluate_manifest(self.manifest_path, self.predictions_dir)
+
+    def test_scorecard_records_verified_source_identity(self):
+        mask = Image.new("L", (2, 2), 128)
+        case = self.write_manifest(mask)
+        mask.save(self.prediction_path)
+
+        result = evaluate_manifest(self.manifest_path, self.predictions_dir)
+        identity = result["cases"][0]["input_identity"]
+
+        self.assertEqual(identity["image_sha256"], case["image_sha256"])
+        self.assertEqual(identity["annotation_sha256"], case["annotation_sha256"])
+        self.assertEqual(identity["image_filename"], "b01.png")
+        self.assertEqual(identity["annotation_filename"], "b01-alpha.png")
 
     def test_writes_machine_readable_scorecard(self):
         mask = Image.new("L", (2, 2), 128)
