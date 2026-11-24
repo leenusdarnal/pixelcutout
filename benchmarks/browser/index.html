@@ -50,11 +50,19 @@
           <p class="hint">
             Choose <code>benchmarks/results/aim500/</code>. It should contain
             <code>aim500-candidates.json</code>, <code>images/</code> and <code>masks/</code>.
-            When directory selection is unavailable, select the manifest and all image/matte PNG files together.
+          </p>
+        </div>
+
+        <label class="field-label" for="fixture-files">Or select the fixture files individually</label>
+        <div class="file-control">
+          <input id="fixture-files" type="file" accept=".json,image/png" multiple />
+          <p class="hint">
+            Select <code>aim500-candidates.json</code> plus all 32 PNG files in the
+            <code>images/</code> and <code>masks/</code> folders (33 files total).
           </p>
         </div>
         <div id="fixture-status" class="inline-status" role="status" aria-live="polite">
-          No fixture folder selected.
+          No fixture files selected.
         </div>
 
         <div class="field-grid">

@@ -28,7 +28,7 @@ Choose the local directory created by the terms-gated AIM-500 acquisition:
 
 `benchmarks/results/aim500/`
 
-When the browser cannot select a directory, select `aim500-candidates.json` and all 32 PNG files from its `images/` and `masks/` folders in one multi-file selection. The harness matches unique file names from the manifest.
+When the browser cannot select a directory, use the **Or select the fixture files individually** picker and select `aim500-candidates.json` plus all 32 PNG files from its `images/` and `masks/` folders in one multi-file selection. The harness matches unique file names from the manifest and rejects duplicate names or missing pairs.
 
 It must contain:
 

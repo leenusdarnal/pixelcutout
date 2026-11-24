@@ -1,4 +1,5 @@
 const fixtureInput = document.querySelector('#fixture-folder');
+const fixtureFilesInput = document.querySelector('#fixture-files');
 const outputButton = document.querySelector('#choose-output');
 const runButton = document.querySelector('#run-benchmark');
 const fixtureStatus = document.querySelector('#fixture-status');
@@ -43,10 +44,6 @@ function safeCaseId(value) {
   return typeof value === 'string' && /^B\d{2}$/.test(value);
 }
 
-function getRelativePath(file) {
-  return file.webkitRelativePath || file.name;
-}
-
 async function readFixtureFolder(fileList) {
   const files = Array.from(fileList);
   const manifestFile = files.find((file) => file.name === 'aim500-candidates.json');
@@ -76,7 +73,7 @@ async function readFixtureFolder(fileList) {
     const image = filesByName.get(entry.filename);
     const mask = filesByName.get(entry.annotation_filename);
     if (!image || !mask) {
-      throw new Error(`${id}: missing image or alpha matte. Choose the complete AIM-500 output folder.`);
+      throw new Error(`${id}: missing image or alpha matte. Select the complete folder or all 33 fixture files.`);
     }
     if (!Number.isSafeInteger(entry.width) || !Number.isSafeInteger(entry.height)) {
       throw new Error(`${id}: missing image dimensions in the fixture report.`);
@@ -97,18 +94,18 @@ async function readFixtureFolder(fileList) {
   return { manifest, cases };
 }
 
-fixtureInput.addEventListener('change', async () => {
+async function handleFixtureSelection(fileList) {
   if (running) return;
   fixtureSet = null;
   runButton.disabled = true;
-  if (!fixtureInput.files?.length) {
-    setStatus(fixtureStatus, 'No fixture folder selected.');
+  if (!fileList?.length) {
+    setStatus(fixtureStatus, 'No fixture files selected.');
     return;
   }
 
   setStatus(fixtureStatus, 'Checking the manifest and all local image/matte pairs…');
   try {
-    fixtureSet = await readFixtureFolder(fixtureInput.files);
+    fixtureSet = await readFixtureFolder(fileList);
     setStatus(
       fixtureStatus,
       `Ready: ${fixtureSet.cases.length} image/matte pairs · ${fixtureSet.manifest.dataset || 'AIM-500'} · images remain local.`,
@@ -118,9 +115,12 @@ fixtureInput.addEventListener('change', async () => {
     updateProgress('Fixture set is ready. Choose the models and backend, then start the run.', 0, 0);
   } catch (error) {
     fixtureSet = null;
-    setStatus(fixtureStatus, error instanceof Error ? error.message : 'Could not read the fixture folder.', 'error');
+    setStatus(fixtureStatus, error instanceof Error ? error.message : 'Could not read the fixture files.', 'error');
   }
-});
+}
+
+fixtureInput.addEventListener('change', () => handleFixtureSelection(fixtureInput.files));
+fixtureFilesInput.addEventListener('change', () => handleFixtureSelection(fixtureFilesInput.files));
 
 outputButton.addEventListener('click', async () => {
   if (running) return;
@@ -420,6 +420,7 @@ runButton.addEventListener('click', async () => {
   runButton.disabled = true;
   outputButton.disabled = true;
   fixtureInput.disabled = true;
+  fixtureFilesInput.disabled = true;
   resultsRoot.replaceChildren();
   downloadsRoot.replaceChildren();
   for (const url of fallbackDownloads.splice(0)) URL.revokeObjectURL(url);
@@ -473,6 +474,7 @@ runButton.addEventListener('click', async () => {
     runButton.disabled = !fixtureSet;
     outputButton.disabled = false;
     fixtureInput.disabled = false;
+    fixtureFilesInput.disabled = false;
   }
 });
 
