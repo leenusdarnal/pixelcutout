@@ -44,19 +44,19 @@ def _local_file(root: Path, filename: str, label: str) -> Path:
     return path
 
 
-def _read_alpha(path: Path, label: str, allow_luminance: bool = True) -> Image.Image:
+def _read_alpha(path: Path, label: str) -> Image.Image:
     with Image.open(path) as source:
+        if source.format != "PNG":
+            raise ValueError(f"{label} must be a PNG file")
         if source.mode in ("RGBA", "LA"):
             alpha = source.getchannel("A")
         elif "transparency" in source.info:
             alpha = source.convert("RGBA").getchannel("A")
-        elif source.mode in ("L", "1", "I", "I;16", "F", "P"):
-            alpha = source.convert("L")
-        elif allow_luminance:
-            alpha = source.convert("L")
+        elif source.mode == "L":
+            alpha = source.copy()
         else:
             raise ValueError(
-                f"{label} must be an 8-bit grayscale alpha PNG or an image with an alpha channel"
+                f"{label} must be an 8-bit grayscale PNG or a PNG with an alpha channel"
             )
         result = alpha.copy()
     if result.width < 1 or result.height < 1:
@@ -195,11 +195,14 @@ def score_case(
             raise ValueError(f"{case_id}: ground-truth alpha SHA-256 does not match the manifest")
 
     ground_truth = _read_alpha(mask_path, f"{case_id} ground-truth alpha")
-    prediction = _read_alpha(
-        prediction_path,
-        f"{case_id} prediction",
-        allow_luminance=False,
-    )
+    intermediate_alpha_pixels = sum(ground_truth.histogram()[1:255])
+    if intermediate_alpha_pixels == 0:
+        raise ValueError(
+            f"{case_id}: ground-truth annotation is binary; soft-alpha scoring requires "
+            "at least one intermediate 8-bit alpha value (1-254)"
+        )
+
+    prediction = _read_alpha(prediction_path, f"{case_id} prediction")
     if prediction.size != ground_truth.size:
         raise ValueError(
             f"{case_id}: prediction dimensions {prediction.size} do not match "
